@@ -42,4 +42,26 @@ def create_matrix_factorization_model(n_rows, n_cols, n_latent=128, lamb=0.05):
 
     return tf.keras.Model(inputs, outputs)
 
+def train_and_predict_sgd_matrix_factorization(
+    dataset, n_latent, epochs
+):
+    n_rows, n_cols = dataset.get_matrix_dims()
+    model = create_matrix_factorization_model(n_rows, n_cols, n_latent=n_latent)
+    model.compile(
+        optimizer="Adam",
+        loss="mean_squared_error"
+    )
 
+    inputs, targets = dataset.get_dataset()
+    model.fit(
+        x=inputs,
+        y=targets,
+        batch_size=1024,
+        epochs=epochs,
+        validation_split=0.01,
+        shuffle=True
+    )
+
+    locations = dataset.get_prediction_locations()
+    values = model.predict(locations, batch_size=1024)
+    dataset.postprocess_and_save(locations, values)

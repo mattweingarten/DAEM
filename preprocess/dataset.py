@@ -28,6 +28,9 @@ class CollaborativeFilteringDataset:
         self.indices = np.stack([row_input, col_input], axis=-1)
         self.values = self.norm_train["Normalized" if self.normalized else "Prediction"].to_numpy().reshape(-1, 1).astype(np.float32)
 
+    def get_matrix_dims(self):
+        return self.n_rows, self.n_cols
+
     def get_train_test_split(self, test_fraction=0.1):
         return train_test_split(self.indices, self.values, shuffle=True, test_size=test_fraction)
     
