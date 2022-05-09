@@ -3,13 +3,15 @@ import pandas as pd
 import tensorflow as tf
 import os
 import time
+import math
 
 from preprocess.helpers import *
 
 class CollaborativeFilteringDataset:
-    def __init__(self, dataset_folder, normalized=True, normalize_by_col=False):
+    def __init__(self, dataset_folder, normalized=True, normalize_by_col=False, test_mode=False):
         self.normalized = normalized
         self.normalize_by_col = normalize_by_col
+        self.test_mode = test_mode
 
         train_filepath = os.path.join(dataset_folder, "data_train.csv")
         predict_filepath = os.path.join(dataset_folder, "sampleSubmission.csv")
@@ -18,13 +20,21 @@ class CollaborativeFilteringDataset:
         self.prep_predict = read_and_preprocess(predict_filepath)
 
         self.norm_train, self.mean_train, self.std_train = normalize(self.prep_train, by_col=normalize_by_col)
-        row_input = self.norm_train["matrix_row"].to_numpy()
-        col_input = self.norm_train["matrix_col"].to_numpy()
-        self.n_rows = np.max(row_input)+1
-        self.n_cols = np.max(col_input)+1
-        print(self.n_rows, self.n_cols)
-        self.indices = np.stack([row_input, col_input], axis=-1)
+        self.indices = self.norm_train[["matrix_row", "matrix_col"]].to_numpy()
+        self.n_rows = np.max(self.indices[:, 0])+1
+        self.n_cols = np.max(self.indices[:, 1])+1
         self.values = self.norm_train["Normalized" if self.normalized else "Prediction"].to_numpy().reshape(-1, 1).astype(np.float32)
+
+        if test_mode:
+            N = self.indices.shape[0]
+            sample = np.random.rand(N) < 0.05
+            self.pred_indices = self.indices[sample]
+            self.indices = self.indices[~sample]
+            self.pred_targets = self.norm_train["Prediction"].to_numpy().reshape(-1, 1).astype(np.float32)[sample]
+            self.values = self.values[~sample]
+        else:
+            self.pred_indices = self.prep_predict[["matrix_row","matrix_col"]].to_numpy()
+            self.pred_targets = None
 
     def get_matrix_dims(self):
         return self.n_rows, self.n_cols
@@ -51,7 +61,7 @@ class CollaborativeFilteringDataset:
         return inputs, tf.sparse.to_dense(targets)
     
     def get_prediction_locations(self):
-        return self.prep_predict[["matrix_row", "matrix_col"]].to_numpy()
+        return self.pred_indices
     
     def postprocess_and_save(self, locations, predictions):
         predictions = predictions.reshape(-1)
@@ -71,16 +81,21 @@ class CollaborativeFilteringDataset:
             val = min(5, max(1, round(val)))
             out_ids.append(f"r{row+1}_c{col+1}")
             out_vals.append(val)
-        ids = pd.Series(out_ids, name="Id")
-        vals = pd.Series(out_vals, name="Prediction")
-        df = pd.DataFrame(
-            {
-            "Id":ids, 
-            "Prediction":vals
-            }
-        )
-        timestamp = time.ctime()
-        df.to_csv(os.path.join("predictions", f"{timestamp}.csv"), index=False)
+        if self.test_mode:
+            vals = np.array(out_vals).reshape(-1, 1)
+            rmse = math.sqrt(np.mean((vals - self.pred_targets)**2))
+            print(f"RMSE score: {rmse}")
+        else:
+            ids = pd.Series(out_ids, name="Id")
+            vals = pd.Series(out_vals, name="Prediction")
+            df = pd.DataFrame(
+                {
+                "Id":ids, 
+                "Prediction":vals
+                }
+            )
+            timestamp = time.ctime()
+            df.to_csv(os.path.join("predictions", f"{timestamp}.csv"), index=False)
 
 
 
