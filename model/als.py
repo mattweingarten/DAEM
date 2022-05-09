@@ -9,10 +9,10 @@ def init_latent_vectors(mat, k):
 
     return tf.Variable(U),tf.Variable(V)
 
-def alternating_least_squares(mat, k=16, lamb=0.1, iters=20):
+def alternating_least_squares(mat, k=3, lamb=0.1, iters=20):
     n_rows, n_cols = mat.shape
     U, V = init_latent_vectors(mat, k)
-    Om = tf.cast(tf.math.greater(mat, 0), mat.dtype)
+    Om = tf.cast(tf.math.not_equal(mat, 0), mat.dtype)
 
     for i in range(iters):
         print(f"Iter.: {i}, error: {tf.reduce_sum(Om*(mat - U@tf.transpose(V, perm=[1,0]))**2) / tf.reduce_sum(Om)}")
@@ -39,13 +39,38 @@ def alternating_least_squares(mat, k=16, lamb=0.1, iters=20):
     
     return U, V
 
+def sgd_matrix_factorization(A, k=3, lamb=0.1, iters=100):
+    n_rows, n_cols = A.shape
+    U, V = init_latent_vectors(A, k)
+    mask = tf.cast(tf.math.not_equal(A, 0), tf.float32)
+
+    def loss_fn(Users, Items):
+        return tf.reduce_sum(mask * (A - Users @ tf.transpose(Items, perm=[1,0]))**2) + \
+            lamb * ( tf.reduce_sum(Users**2) + tf.reduce_sum(Items**2))
+    
+    def metric_fn(Users, Items):
+        return tf.reduce_sum(mask * (A - Users @ tf.transpose(Items, perm=[1,0]))**2) / tf.reduce_sum(mask)
+    
+    opt = tf.keras.optimizers.Adam()
+
+    print(f"Starting loss: {metric_fn(U,V)}")
+
+    for i in range(iters):
+        with tf.GradientTape() as tape:
+            loss = loss_fn(U,V)
+        grads = tape.gradient(loss, [U,V])
+        opt.apply_gradients(zip(grads, [U,V]))
+        print(f"Loss after it. {i}: {metric_fn(U,V)}")
+    
+    return U, V
 
 def train_and_predict_alternating_least_squares(
-    dataset, k, lamb, iters
+    dataset, k, lamb, iters, use_sgd=False
 ):
     matrix = dataset.get_dense_matrix()
 
-    U,V = alternating_least_squares(matrix, k=k, lamb=lamb, iters=iters)
+    U,V = sgd_matrix_factorization(matrix, k=k, lamb=lamb, iters=iters) if use_sgd \
+        else alternating_least_squares(matrix, k=k, lamb=lamb, iters=iters)
     dense_predictions = (U@tf.transpose(V, perm=[1,0]))
 
     locations = dataset.get_prediction_locations()

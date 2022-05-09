@@ -1,25 +1,52 @@
 import tensorflow as tf
 
-class SLIM(tf.Module):
-    def __init__(self, sp_mat, l2=0.05, l1=0.1, name=None):
-        super(SLIM, self).__init__(name=name)
-        self.sp_mat = sp_mat
-        self.n_rows, self.n_cols = sp_mat.shape
-        self.embedding = tf.keras.layers.Embedding(
-            self.n_cols, self.n_cols,
-            embeddings_initializer=tf.keras.initializers.RandomUniform(minval=0.0, maxval=0.01),
-            embeddings_regularizer=tf.keras.regularizers.L1L2(l1=l1, l2=l2)
-        )
-        # Due to a bug we must enforce all constraints on the embeddings ourselves
-        self.zero_diag = 1. - tf.eye(self.n_cols)
-        self.non_neg_constr = tf.keras.constraints.NonNeg()
+
+def compute_slim_matrix(
+    A, iters, l1, l2, use_mask=True
+):
+    n_rows, n_cols = A.shape
     
-    def __call__(self, idxs):
-        mask = tf.gather_nd(self.zero_diag, idxs)
-        vecs = mask * self.non_neg_constr(self.embedding(idxs)[:,0,:])
-        predictions = tf.sparse.sparse_dense_matmul(
-            self.sp_mat, # n_rows x n_cols
-            vecs, # batch_size x n_cols -> transpose this
-            adjoint_a=False, adjoint_b=True
-        ) # result : n_rows x batch_size -> transpose again
-        return tf.transpose(predictions, perm=[1,0])
+
+    W = tf.Variable(
+        tf.random.uniform((n_cols, n_cols), minval=0, maxval=2./n_cols)
+    )
+    
+    mask = tf.cast(tf.math.not_equal(A, 0), tf.float32) if use_mask\
+            else tf.ones((n_rows, n_cols))
+
+    def metric_fn(matrix):
+        return tf.reduce_sum(mask*(A - A@matrix)**2) / tf.reduce_sum(mask)
+
+    def loss_fn(matrix):
+        return tf.reduce_sum(mask*(A - A@matrix)**2) + l2/2 *tf.reduce_sum(matrix**2) + l1 * tf.reduce_sum(tf.math.abs(matrix))
+
+    def project(matrix):
+        return matrix * (1. - tf.eye(n_cols)) * tf.cast(tf.math.greater_equal(matrix, 0), tf.float32)
+
+    W.assign(project(W))
+
+    opt = tf.keras.optimizers.Adam()
+
+    print(f"Starting loss: {metric_fn(W)}")
+
+    for i in range(iters):
+        with tf.GradientTape() as tape:
+            loss = loss_fn(W)
+        grads = tape.gradient(loss, [W])
+        opt.apply_gradients(zip(grads, [W]))
+        W.assign(project(W))
+        print(f"Loss after it. {i}: {metric_fn(W)}")
+    
+    return W
+
+def train_and_predict_SLIM(
+    dataset, iters, l1, l2
+):
+    A = dataset.get_dense_matrix()
+    W = compute_slim_matrix(A, iters, l1, l2)
+    A_tilde = A @ W
+
+    locations = dataset.get_prediction_locations()
+    values = tf.gather_nd(A_tilde, locations)
+    dataset.postprocess_and_save(locations, values.numpy())
+

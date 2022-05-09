@@ -4,8 +4,6 @@ import tensorflow as tf
 import os
 import time
 
-from sklearn.model_selection import train_test_split
-
 from preprocess.helpers import *
 
 class CollaborativeFilteringDataset:
@@ -30,9 +28,6 @@ class CollaborativeFilteringDataset:
 
     def get_matrix_dims(self):
         return self.n_rows, self.n_cols
-
-    def get_train_test_split(self, test_fraction=0.1):
-        return train_test_split(self.indices, self.values, shuffle=True, test_size=test_fraction)
     
     def get_dataset(self):
         return self.indices, self.values
@@ -73,7 +68,7 @@ class CollaborativeFilteringDataset:
             elif self.normalized and not self.normalize_by_col:
                 val *= self.std_train[row]
                 val += self.mean_train[row]
-            val = min(5, max(0, round(val)))
+            val = min(5, max(1, round(val)))
             out_ids.append(f"r{row+1}_c{col+1}")
             out_vals.append(val)
         ids = pd.Series(out_ids, name="Id")
