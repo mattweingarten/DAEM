@@ -74,7 +74,7 @@ class CollaborativeFilteringDataset:
             val = predictions[i]
             if self.normalized and self.normalize_by_col:
                 val *= self.std_train[col]
-                val += self.mean_train[col] 
+                val += self.mean_train[col]
             elif self.normalized and not self.normalize_by_col:
                 val *= self.std_train[row]
                 val += self.mean_train[row]

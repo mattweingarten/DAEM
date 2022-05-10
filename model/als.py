@@ -37,16 +37,16 @@ def alternating_least_squares(mat, k=3, lamb=0.1, iters=20):
             new_U_rows.append(update[:,0])
         U.assign(tf.stack(new_U_rows, axis=0))
     
-    return U, V
+    return U@tf.transpose(V, perm=[1,0])
 
-def sgd_matrix_factorization(A, k=3, lamb=0.1, iters=100):
+def sgd_matrix_factorization(A, k=3, lamb=0.1, iters=20, steps=500):
     n_rows, n_cols = A.shape
     U, V = init_latent_vectors(A, k)
     mask = tf.cast(tf.math.not_equal(A, 0), tf.float32)
 
     def loss_fn(Users, Items):
         return tf.reduce_sum(mask * (A - Users @ tf.transpose(Items, perm=[1,0]))**2) + \
-            lamb * ( tf.reduce_sum(Users**2) + tf.reduce_sum(Items**2))
+            lamb * ( tf.reduce_sum(Users**2) + tf.reduce_sum(Items**2) )
     
     def metric_fn(Users, Items):
         return tf.reduce_sum(mask * (A - Users @ tf.transpose(Items, perm=[1,0]))**2) / tf.reduce_sum(mask)
@@ -56,22 +56,31 @@ def sgd_matrix_factorization(A, k=3, lamb=0.1, iters=100):
     print(f"Starting loss: {metric_fn(U,V)}")
 
     for i in range(iters):
-        with tf.GradientTape() as tape:
-            loss = loss_fn(U,V)
-        grads = tape.gradient(loss, [U,V])
-        opt.apply_gradients(zip(grads, [U,V]))
-        print(f"Loss after it. {i}: {metric_fn(U,V)}")
+        for j in range(steps):
+            with tf.GradientTape() as tape:
+                loss = loss_fn(U,V)
+            grads = tape.gradient(loss, [U])
+            opt.apply_gradients(zip(grads, [U]))
+
+        print(f"Loss after it. {i}, U step: {metric_fn(U,V)}")
+
+        for j in range(steps):
+            with tf.GradientTape() as tape:
+                loss = loss_fn(U,V)
+            grads = tape.gradient(loss, [V])
+            opt.apply_gradients(zip(grads, [V]))
+
+        print(f"Loss after it. {i}, V step: {metric_fn(U,V)}")
     
-    return U, V
+    return U @ tf.transpose(V, perm=[1,0])
 
 def train_and_predict_alternating_least_squares(
     dataset, k, lamb, iters, use_sgd=False
 ):
     matrix = dataset.get_dense_matrix()
 
-    U,V = sgd_matrix_factorization(matrix, k=k, lamb=lamb, iters=iters) if use_sgd \
+    dense_predictions = sgd_matrix_factorization(matrix, k=k, lamb=lamb, iters=iters) if use_sgd \
         else alternating_least_squares(matrix, k=k, lamb=lamb, iters=iters)
-    dense_predictions = (U@tf.transpose(V, perm=[1,0]))
 
     locations = dataset.get_prediction_locations()
 
