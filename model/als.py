@@ -9,10 +9,9 @@ def init_latent_vectors(mat, k):
 
     return tf.Variable(U),tf.Variable(V)
 
-def alternating_least_squares(mat, k, lamb, iters):
+def alternating_least_squares(mat, Om, k, lamb, iters):
     n_rows, n_cols = mat.shape
     U, V = init_latent_vectors(mat, k)
-    Om = tf.cast(tf.math.not_equal(mat, 0), mat.dtype)
 
     for i in range(iters):
         print(f"Iter.: {i}, error: {tf.reduce_sum(Om*(mat - U@tf.transpose(V, perm=[1,0]))**2) / tf.reduce_sum(Om)}")
@@ -40,12 +39,11 @@ def alternating_least_squares(mat, k, lamb, iters):
     return U@tf.transpose(V, perm=[1,0])
 
 
-def sgd_matrix_factorization(A, k, lamb, iters, steps=500):
+def sgd_matrix_factorization(A, mask, k, lamb, iters, steps=500):
     n_rows, n_cols = A.shape
     U, V = init_latent_vectors(A, k)
     U_b = tf.Variable(tf.zeros((n_rows, 1)))
     V_b = tf.Variable(tf.zeros((1, n_cols)))
-    mask = tf.cast(tf.math.not_equal(A, 0), tf.float32)
 
     def loss_fn(Users, Items, User_bias, Item_bias):
         return tf.reduce_sum(mask * tf.square(A - (Users @ tf.transpose(Items, perm=[1,0]) + User_bias + Item_bias))) \
@@ -77,10 +75,9 @@ def sgd_matrix_factorization(A, k, lamb, iters, steps=500):
     
     return U @ tf.transpose(V, perm=[1,0]) + U_b + V_b
 
-def sim_matrix_fatorization(A, k, lamb, iters, f_sim=0.01, steps=500):
+def sim_matrix_fatorization(A, Om, k, lamb, iters, f_sim=0.01, steps=500):
     n_rows, n_cols = A.shape
     U, V = init_latent_vectors(A, k)
-    Om = tf.cast(tf.math.not_equal(A, 0), tf.float32)
 
     def loss_fn(Users, Items):
         return (tf.reduce_sum(Om * tf.square(A - Users @ tf.transpose(Items, perm=[1,0]))) \
@@ -142,11 +139,12 @@ def sim_matrix_fatorization(A, k, lamb, iters, f_sim=0.01, steps=500):
 def train_and_predict_mf_ensemble(dataset, n=32, k=8, lamb=0.1, iters=6):
     rows,cols = dataset.get_matrix_dims()
     matrix = dataset.get_dense_matrix()
+    mask = dataset.get_dense_mask()
 
     dense_predictions = tf.zeros((rows, cols))
     for i in range(n):
-        sample = matrix * tf.cast(tf.math.greater(tf.random.uniform((rows, cols)), 0.5), tf.float32)
-        dense_predictions += sgd_matrix_factorization(sample, k=k, lamb=lamb, iters=iters) / n
+        sample = mask * tf.cast(tf.math.greater(tf.random.uniform((rows, cols)), 0.5), tf.float32)
+        dense_predictions += sgd_matrix_factorization(matrix, sample, k=k, lamb=lamb, iters=iters) / n
     
     locations = dataset.get_prediction_locations()
 
@@ -157,13 +155,14 @@ def train_and_predict_mf_ensemble(dataset, n=32, k=8, lamb=0.1, iters=6):
 
 
 def train_and_predict_alternating_least_squares(
-    dataset, k=3, lamb=0.1, iters=20, use_sgd=True, use_similariy=False
+    dataset, k=2, lamb=0.1, iters=20, use_sgd=False, use_similariy=False
 ):
     matrix = dataset.get_dense_matrix()
+    mask = dataset.get_dense_mask()
 
-    dense_predictions = sgd_matrix_factorization(matrix, k=k, lamb=lamb, iters=iters) if use_sgd  else \
-                        sim_matrix_fatorization(matrix, k=k, lamb=lamb, iters=iters) if use_similariy else \
-                        alternating_least_squares(matrix, k=k, lamb=lamb, iters=iters)
+    dense_predictions = sgd_matrix_factorization(matrix, mask, k=k, lamb=lamb, iters=iters) if use_sgd  else \
+                        sim_matrix_fatorization(matrix, mask, k=k, lamb=lamb, iters=iters) if use_similariy else \
+                        alternating_least_squares(matrix, mask, k=k, lamb=lamb, iters=iters)
 
     locations = dataset.get_prediction_locations()
 

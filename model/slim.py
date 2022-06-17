@@ -2,15 +2,13 @@ import tensorflow as tf
 
 
 def compute_slim_matrix(
-    A, iters, l1, l2
+    A, mask, iters, l1, l2
 ):
     n_rows, n_cols = A.shape
     
     W = tf.Variable(
         tf.random.uniform((n_cols, n_cols), minval=0, maxval=2./n_cols)
     )
-    
-    mask = tf.cast(tf.math.not_equal(A, 0), tf.float32)
 
     def metric_fn(matrix):
         return tf.reduce_sum(mask*(A - A@matrix)**2) / tf.reduce_sum(mask)
@@ -41,7 +39,8 @@ def train_and_predict_SLIM(
     dataset, iters=1000, l1=2., l2=0.5
 ):
     A = dataset.get_dense_matrix()
-    W = compute_slim_matrix(A, iters, l1, l2)
+    Omega = dataset.get_dense_mask()
+    W = compute_slim_matrix(A, Omega, iters, l1, l2)
     A_tilde = A @ W
 
     locations = dataset.get_prediction_locations()

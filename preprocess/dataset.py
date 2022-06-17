@@ -45,20 +45,14 @@ class CollaborativeFilteringDataset:
     def get_sparse_matrix(self):
         return tf.sparse.SparseTensor(self.indices, self.values.reshape(-1), (self.n_rows, self.n_cols))
 
+    def get_sparse_mask(self):
+        return tf.sparse.SparseTensor(self.indices, np.ones((self.values.shape[0],), dtype=np.float32), (self.n_rows, self.n_cols))
+
     def get_dense_matrix(self):
         return tf.sparse.to_dense(tf.sparse.reorder(self.get_sparse_matrix()))
-
-    def get_slim_dataset(self):
-        targets = tf.sparse.transpose(
-            self.get_sparse_matrix(),
-            perm=[1,0]
-        ) # n_cols x n_rows
-        inputs = tf.expand_dims(
-            tf.range(0, self.n_cols, dtype=tf.int64),
-            axis=-1
-        ) # n_cols x 1
-
-        return inputs, tf.sparse.to_dense(targets)
+    
+    def get_dense_mask(self):
+        return tf.sparse.to_dense(tf.sparse.reorder(self.get_sparse_mask()))
     
     def get_prediction_locations(self):
         return self.pred_indices
