@@ -6,8 +6,10 @@ from model.als import train_and_predict_alternating_least_squares, train_and_pre
 from model.slim import train_and_predict_SLIM
 from model.ncf import train_and_predict_ncf_model
 from model.kl_div import train_and_predict_kl_div
+from model.baseline import train_and_predict_baseline
 
 cil_dataset = CollaborativeFilteringDataset("~/datasets/cil-collaborative-filtering-2022", normalized=True, normalize_by_col=True, test_mode=True)
 
-
-train_and_predict_alternating_least_squares(cil_dataset, use_sgd=True, iters=20)
+train_and_predict_alternating_least_squares(cil_dataset, k=2, lamb=0.1, use_sgd=True)
+train_and_predict_alternating_least_squares(cil_dataset, k=2, lamb=1.0, use_sgd=True)
+train_and_predict_alternating_least_squares(cil_dataset, k=2, lamb=10., use_sgd=True)

@@ -47,7 +47,7 @@ def sgd_matrix_factorization(A, mask, k, lamb, iters, steps=500):
 
     def loss_fn(Users, Items, User_bias, Item_bias):
         return tf.reduce_sum(mask * tf.square(A - (Users @ tf.transpose(Items, perm=[1,0]) + User_bias + Item_bias))) \
-            + lamb/2 * ( tf.reduce_sum(Users**2) + tf.reduce_sum(Items**2) )
+            + lamb/2 * ( tf.reduce_sum(tf.square(Users)) + tf.reduce_sum(tf.square(Items)) )
     
     def metric_fn(Users, Items, User_bias, Item_bias):
         return tf.reduce_sum(mask * tf.square(A - (Users @ tf.transpose(Items, perm=[1,0]) + User_bias + Item_bias))) / tf.reduce_sum(mask)
@@ -72,7 +72,7 @@ def sgd_matrix_factorization(A, mask, k, lamb, iters, steps=500):
             opt.apply_gradients(zip(grads, [V,V_b]))
 
         print(f"Loss after it. {i}, V step: {metric_fn(U,V,U_b,V_b)}")
-    
+        
     return U @ tf.transpose(V, perm=[1,0]) + U_b + V_b
 
 def sim_matrix_fatorization(A, Om, k, lamb, iters, f_sim=0.01, steps=500):
@@ -155,7 +155,7 @@ def train_and_predict_mf_ensemble(dataset, n=32, k=8, lamb=0.1, iters=6):
 
 
 def train_and_predict_alternating_least_squares(
-    dataset, k=2, lamb=0.1, iters=20, use_sgd=False, use_similariy=False
+    dataset, k=3, lamb=0.1, iters=20, use_sgd=False, use_similariy=False
 ):
     matrix = dataset.get_dense_matrix()
     mask = dataset.get_dense_mask()

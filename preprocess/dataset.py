@@ -27,7 +27,7 @@ class CollaborativeFilteringDataset:
 
         if test_mode:
             N = self.indices.shape[0]
-            sample = np.random.rand(N) < 0.5
+            sample = np.random.rand(N) < 0.05
             self.pred_indices = self.indices[sample]
             self.indices = self.indices[~sample]
             self.pred_targets = self.norm_train["Prediction"].to_numpy().reshape(-1, 1).astype(np.float32)[sample]
