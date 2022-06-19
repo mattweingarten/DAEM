@@ -8,8 +8,8 @@ import math
 from preprocess.helpers import *
 
 class CollaborativeFilteringDataset:
-    def __init__(self, dataset_folder, normalized=True, normalize_by_col=False, test_mode=False):
-        self.normalized = normalized
+    def __init__(self, dataset_folder, apply_z_trafo=True, normalize_by_col=False, test_mode=False):
+        self.apply_z_trafo = apply_z_trafo
         self.normalize_by_col = normalize_by_col
         self.test_mode = test_mode
 
@@ -23,7 +23,7 @@ class CollaborativeFilteringDataset:
         self.indices = self.norm_train[["matrix_row", "matrix_col"]].to_numpy()
         self.n_rows = np.max(self.indices[:, 0])+1
         self.n_cols = np.max(self.indices[:, 1])+1
-        self.values = self.norm_train["Normalized" if self.normalized else "Prediction"].to_numpy().reshape(-1, 1).astype(np.float32)
+        self.values = self.norm_train["Normalized" if self.apply_z_trafo else "Prediction"].to_numpy().reshape(-1, 1).astype(np.float32)
 
         if test_mode:
             N = self.indices.shape[0]
@@ -47,12 +47,20 @@ class CollaborativeFilteringDataset:
 
     def get_sparse_mask(self):
         return tf.sparse.SparseTensor(self.indices, np.ones((self.values.shape[0],), dtype=np.float32), (self.n_rows, self.n_cols))
-
-    def get_dense_matrix(self):
-        return tf.sparse.to_dense(tf.sparse.reorder(self.get_sparse_matrix()))
     
     def get_dense_mask(self):
         return tf.sparse.to_dense(tf.sparse.reorder(self.get_sparse_mask()))
+
+    def get_dense_matrix(self):
+        valid_entries = tf.sparse.to_dense(tf.sparse.reorder(self.get_sparse_matrix()))
+        if self.apply_z_trafo:
+            # 0 is already row/col mean
+            return valid_entries
+        # impute missing values with row/col mean
+        mask = self.get_dense_mask()
+        ax = 0 if self.normalize_by_col else 1
+        means = tf.reduce_sum(valid_entries, axis=ax, keepdims=True) / tf.reduce_sum(mask, axis=ax, keepdims=True)
+        return valid_entries + (1. - mask) * means
     
     def get_prediction_locations(self):
         return self.pred_indices
@@ -66,13 +74,13 @@ class CollaborativeFilteringDataset:
         for i in range(n):
             row, col = locations[i]
             val = predictions[i]
-            if self.normalized and self.normalize_by_col:
+            if self.apply_z_trafo and self.normalize_by_col:
                 val *= self.std_train[col]
                 val += self.mean_train[col]
-            elif self.normalized and not self.normalize_by_col:
+            elif self.apply_z_trafo and not self.normalize_by_col:
                 val *= self.std_train[row]
                 val += self.mean_train[row]
-            val = min(5, max(1, round(val)))
+            val = min(5, max(1, val))
             out_ids.append(f"r{row+1}_c{col+1}")
             out_vals.append(val)
         if self.test_mode:

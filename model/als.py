@@ -13,8 +13,24 @@ def alternating_least_squares(mat, Om, k, lamb, iters):
     n_rows, n_cols = mat.shape
     U, V = init_latent_vectors(mat, k)
 
+    def metric_fn(Users, Items):
+        return tf.reduce_sum(Om*(mat - Users@tf.transpose(Items, perm=[1,0]))**2) / tf.reduce_sum(Om)
+
+    def error_fn(Users, Items):
+        return tf.reduce_sum(Om*(mat - Users@tf.transpose(Items, perm=[1,0]))**2) + lamb/2 * (tf.reduce_sum(Users**2) + tf.reduce_sum(Items**2))
+
     for i in range(iters):
-        print(f"Iter.: {i}, error: {tf.reduce_sum(Om*(mat - U@tf.transpose(V, perm=[1,0]))**2) / tf.reduce_sum(Om)}")
+        
+        new_U_rows = []
+        for r in range(n_rows):
+            rhs = tf.tensordot(mat[r, :],tf.linalg.diag(Om[r, :]) @ V, 1)
+            lhs = lamb * tf.eye(k) + \
+                tf.transpose(V, perm=[1,0]) @ tf.linalg.diag(Om[r, :]) @ V
+            update = tf.linalg.solve(lhs, tf.expand_dims(rhs, axis=-1))
+            new_U_rows.append(update[:,0])
+        U.assign(tf.stack(new_U_rows, axis=0))
+    
+        print(f"Iter {i:3d} updated U: mse: {metric_fn(U, V):5f}, objective: {error_fn(U,V)}")
         
         new_V_rows = []
         for c in range(n_cols):
@@ -25,17 +41,8 @@ def alternating_least_squares(mat, Om, k, lamb, iters):
             new_V_rows.append(update[:, 0])
         V.assign(tf.stack(new_V_rows, axis=0))
 
-        print(f"Iter.: {i}, error: {tf.reduce_sum(Om*(mat - U@tf.transpose(V, perm=[1,0]))**2) / tf.reduce_sum(Om)}")
+        print(f"Iter {i:3d} updated V: mse: {metric_fn(U, V):5f}, objective: {error_fn(U,V)}")
 
-        new_U_rows = []
-        for r in range(n_rows):
-            rhs = tf.tensordot(mat[r, :], tf.linalg.diag(Om[r, :]) @ V, 1)
-            lhs = lamb * tf.eye(k) + \
-                tf.transpose(V, perm=[1,0]) @ tf.linalg.diag(Om[r, :]) @ V
-            update = tf.linalg.solve(lhs, tf.expand_dims(rhs, axis=-1))
-            new_U_rows.append(update[:,0])
-        U.assign(tf.stack(new_U_rows, axis=0))
-    
     return U@tf.transpose(V, perm=[1,0])
 
 
