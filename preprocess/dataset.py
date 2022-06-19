@@ -80,7 +80,7 @@ class CollaborativeFilteringDataset:
             elif self.apply_z_trafo and not self.normalize_by_col:
                 val *= self.std_train[row]
                 val += self.mean_train[row]
-            val = min(5, max(1, val))
+            val = min(5.0, max(1.0, val))
             out_ids.append(f"r{row+1}_c{col+1}")
             out_vals.append(val)
         if self.test_mode:
@@ -97,8 +97,5 @@ class CollaborativeFilteringDataset:
                 }
             )
             timestamp = time.ctime()
-            df.to_csv(os.path.join("predictions", f"{timestamp}.csv"), index=False)
-
-
-
-
+            df.to_csv(os.path.join("predictions", f"{timestamp}.csv"), float_format="%.8f", index=False)
+            

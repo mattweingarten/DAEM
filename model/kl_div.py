@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from model.als import init_latent_vectors
 
-def kl_div_matrix_factorization(matrix, train_samples, k, epochs):
+def kl_div_matrix_factorization(matrix, train_samples, k, beta, epochs):
     rows, cols = matrix.shape
 
     row_emb_mean = tf.keras.layers.Embedding(rows, k)
@@ -25,8 +25,6 @@ def kl_div_matrix_factorization(matrix, train_samples, k, epochs):
                     -0.5 * (1. + logvar - tf.square(mean) - tf.exp(logvar)),
                 axis=1)
                 )
-
-    beta = .05
     
     opt = tf.keras.optimizers.Adam()
     for i in range(epochs):
@@ -66,9 +64,9 @@ def kl_div_matrix_factorization(matrix, train_samples, k, epochs):
     return dense_predictions
 
 
-def train_and_predict_kl_div(dataset, k=64, epochs=100):
+def train_and_predict_kl_div(dataset, k=32, beta=0.05, epochs=10):
 
-    dense_predictions = kl_div_matrix_factorization(dataset.get_dense_matrix(), dataset.get_dataset(), k, epochs)
+    dense_predictions = kl_div_matrix_factorization(dataset.get_dense_matrix(), dataset.get_dataset(), k, beta, epochs)
 
     locations = dataset.get_prediction_locations()
 

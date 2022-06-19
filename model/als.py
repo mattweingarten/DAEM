@@ -162,14 +162,18 @@ def train_and_predict_mf_ensemble(dataset, n=32, k=8, lamb=0.1, iters=6):
 
 
 def train_and_predict_alternating_least_squares(
-    dataset, k=3, lamb=0.1, iters=20, use_sgd=False, use_similariy=False
+    dataset, k=3, lamb=0.1, iters=20, use_sgd=False, use_similariy=False, zeta=1.0
 ):
+    def sign(A):
+        return tf.cast(tf.math.greater(A, 0), tf.float32) - tf.cast(tf.math.less(A, 0), tf.float32)
     matrix = dataset.get_dense_matrix()
+    matrix = sign(matrix) * tf.abs(matrix)**zeta
     mask = dataset.get_dense_mask()
 
     dense_predictions = sgd_matrix_factorization(matrix, mask, k=k, lamb=lamb, iters=iters) if use_sgd  else \
                         sim_matrix_fatorization(matrix, mask, k=k, lamb=lamb, iters=iters) if use_similariy else \
                         alternating_least_squares(matrix, mask, k=k, lamb=lamb, iters=iters)
+    dense_predictions = sign(dense_predictions)*tf.abs(dense_predictions)**(1./zeta)
 
     locations = dataset.get_prediction_locations()
 

@@ -140,7 +140,7 @@ def train_and_predict_ncf_model(
         h1 = model.fit(
             x=inputs,
             y=targets,
-            batch_size=1<<12,
+            batch_size=1<<16,
             epochs=20,
             verbose=0,
             shuffle=True
@@ -154,7 +154,7 @@ def train_and_predict_ncf_model(
         h2 = model.fit(
             x=inputs,
             y=targets,
-            batch_size=1<<12,
+            batch_size=1<<16,
             epochs=20,
             verbose=0,
             shuffle=True
