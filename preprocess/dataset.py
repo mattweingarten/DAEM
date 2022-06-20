@@ -65,7 +65,7 @@ class CollaborativeFilteringDataset:
     def get_prediction_locations(self):
         return self.pred_indices
     
-    def postprocess_and_save(self, locations, predictions):
+    def create_submission(self, locations, predictions):
         predictions = predictions.reshape(-1)
         assert(locations.shape[0] == predictions.shape[0])
         n = locations.shape[0]
@@ -99,3 +99,7 @@ class CollaborativeFilteringDataset:
             timestamp = time.ctime()
             df.to_csv(os.path.join("predictions", f"{timestamp}.csv"), float_format="%.8f", index=False)
             
+    def create_submission_from_dense(self, dense_predictions):
+        locations = self.get_prediction_locations()
+        values = tf.gather_nd(dense_predictions, locations)
+        self.create_submission(locations, np.array(values))

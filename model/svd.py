@@ -1,22 +1,16 @@
 import tensorflow as tf
+from model.data_transforms import power_transform,power_transform_inverse
 
-def low_rank_approx(A, rank, zeta):
-    def sign(A):
-        return tf.cast(tf.math.greater(A, 0), tf.float32) - tf.cast(tf.math.less(A, 0), tf.float32)
-    
-    Sigma, U, V = tf.linalg.svd(sign(A) * tf.abs(A)**zeta)
+def low_rank_approx(A, rank):    
+    Sigma, U, V = tf.linalg.svd(A)
     low_rank =  U[:, :rank] @ tf.linalg.diag(Sigma[:rank]) @ tf.transpose(V[:, :rank], perm=[1,0])
-    return sign(low_rank) * tf.abs(low_rank)**(1./zeta)
+    return low_rank
 
 
-def train_and_predict_low_rank_approx(dataset, rank, zeta):
+def train_and_predict_low_rank_approx(dataset, rank, zeta=1.):
 
     A = dataset.get_dense_matrix()
 
-    dense_predictions = low_rank_approx(A, rank, zeta)
+    dense_predictions = power_transform_inverse(low_rank_approx(power_transform(A, zeta), rank), zeta)
 
-    locations = dataset.get_prediction_locations()
-
-    values = tf.gather_nd(dense_predictions, locations)
-    
-    dataset.postprocess_and_save(locations, values.numpy())
+    dataset.create_submission_from_dense(dense_predictions)

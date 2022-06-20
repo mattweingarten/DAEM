@@ -43,7 +43,5 @@ def train_and_predict_SLIM(
     W = compute_slim_matrix(A, Omega, iters, l1, l2)
     A_tilde = A @ W
 
-    locations = dataset.get_prediction_locations()
-    values = tf.gather_nd(A_tilde, locations)
-    dataset.postprocess_and_save(locations, values.numpy())
+    dataset.create_submission_from_dense(A_tilde)
 

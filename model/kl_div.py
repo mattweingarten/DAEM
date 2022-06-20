@@ -68,11 +68,7 @@ def train_and_predict_kl_div(dataset, k=32, beta=0.05, epochs=10):
 
     dense_predictions = kl_div_matrix_factorization(dataset.get_dense_matrix(), dataset.get_dataset(), k, beta, epochs)
 
-    locations = dataset.get_prediction_locations()
-
-    values = tf.gather_nd(dense_predictions, locations)
-    
-    dataset.postprocess_and_save(locations, values.numpy())
+    dataset.create_submission_from_dense(dense_predictions)
 
 
     

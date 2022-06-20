@@ -40,9 +40,5 @@ def train_and_predict_baseline(dataset, k=3, lamb=0.1, iters=20):
 
     dense_predictions = Users @ Items
 
-    locations = dataset.get_prediction_locations()
-
-    values = tf.gather_nd(dense_predictions, locations)
-    
-    dataset.postprocess_and_save(locations, values.numpy())
+    dataset.create_submission_from_dense(dense_predictions)
 
