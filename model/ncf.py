@@ -73,12 +73,12 @@ def create_neural_collaborative_filtering_model(n_rows, n_cols, n_latent, lamb=0
 def create_neural_bi_form(n_rows, n_cols, n_latent, lamb=0.1):
     row_emb = tf.keras.layers.Embedding(
         n_rows, n_latent,
-        embeddings_initializer="glorot_uniform",
+        embeddings_initializer=tf.keras.initializers.RandomUniform(minval=-0.2, maxval=0.2),
         embeddings_regularizer=tf.keras.regularizers.L2(l2=lamb)
     )
     col_emb = tf.keras.layers.Embedding(
         n_cols, n_latent,
-        embeddings_initializer="glorot_uniform",
+        embeddings_initializer=tf.keras.initializers.RandomUniform(minval=-0.2, maxval=0.2),
         embeddings_regularizer=tf.keras.regularizers.L2(l2=lamb)
     )
 
@@ -121,10 +121,6 @@ def train_and_predict_ncf_model(
     elif model_type=="nbf":
         model, row_latent_weights, col_latent_weights = create_neural_bi_form(n_rows, n_cols, n_latent=n_latent)
     else: raise(f"Unknown model type: {model_type}")
-
-    Users, Items = init_latent_vectors(dataset.get_dense_matrix(),n_latent)
-    row_latent_weights[0].set_weights([Users.numpy()])
-    col_latent_weights[0].set_weights([Items.numpy()])
     
     model.compile(
         optimizer="Adam",

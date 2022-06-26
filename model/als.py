@@ -142,64 +142,57 @@ def modular_matrix_factorization(A, mask, k, per_item_loss_fn, iters=20, steps=1
     return U @ tf.transpose(V, perm=[1,0]) + U_b + V_b
 
 
-def sim_matrix_fatorization(A, Om, k, lamb, iters, f_sim=0.01, steps=1000):
+def sim_matrix_fatorization(A, Om, k, lamb, iters, f_sim=0.001, steps=1000):
     n_rows, n_cols = A.shape
     U, V = init_latent_vectors(A, k)
-
-    def loss_fn(Users, Items):
-        return (tf.reduce_sum(Om * tf.square(A - Users @ tf.transpose(Items, perm=[1,0]))) \
-            + lamb/2 * ( tf.reduce_sum(Users**2) + tf.reduce_sum(Items**2))) / tf.reduce_sum(Om)
     
     UU_sim = (A @ tf.transpose(A, perm=[1,0])) / (Om @ tf.transpose(Om, perm=[1,0]) + 1e-5) * (1. - tf.eye(n_rows))
     user_n_sim = int(f_sim * n_rows)
     per_user_sim_scores = tf.sort(UU_sim, axis=1)
-    per_user_thresh_lo = per_user_sim_scores[:, user_n_sim:user_n_sim+1]
-    per_user_thresh_hi = per_user_sim_scores[:, n_rows-user_n_sim-1:n_rows - user_n_sim]
-    UU_sim_mask = tf.cast(tf.math.greater(UU_sim, per_user_thresh_hi), tf.float32) \
-        - tf.cast(tf.math.less(UU_sim, per_user_thresh_lo), tf.float32)
-    
-    def user_user_sim_loss(Users):
-        norms = tf.norm(Users, axis=1, keepdims=True)
-        cosine_sim = (Users @ tf.transpose(Users, perm=[1,0])) / (norms @ tf.transpose(norms, perm=[1,0]))
-        return - tf.reduce_sum(UU_sim_mask * cosine_sim) / n_rows**2 / 2 / f_sim
+    per_user_thresh = per_user_sim_scores[:, n_rows-user_n_sim-1:n_rows-user_n_sim]
+    UU_sim_mask = tf.cast(tf.math.greater(UU_sim, per_user_thresh), tf.float32)
+    UU_sim_weights = tf.exp(UU_sim) * UU_sim_mask / (tf.reduce_sum(tf.exp(UU_sim) * UU_sim_mask, axis=1, keepdims=True) + 1e-5)
 
+    
     II_sim = (tf.transpose(A, perm=[1,0]) @ A) / (tf.transpose(Om, perm=[1,0]) @ Om + 1e-5) * (1. - tf.eye(n_cols))
     item_n_sim = int(f_sim * n_cols)
     per_item_sim_scores = tf.sort(II_sim, axis=1)
-    per_item_thresh_lo = per_item_sim_scores[:, item_n_sim:item_n_sim+1]
-    per_item_thresh_hi = per_item_sim_scores[:, n_cols-item_n_sim-1:n_cols-item_n_sim]
-    II_sim_mask = tf.cast(tf.math.greater(II_sim, per_item_thresh_hi), tf.float32) \
-        - tf.cast(tf.math.less(II_sim, per_item_thresh_lo), tf.float32)
-    
-    def item_item_sim_loss(Items):
-        norms = tf.norm(Items, axis=1, keepdims=True)
-        cosine_sim = (Items @ tf.transpose(Items, perm=[1,0])) / (norms @ tf.transpose(norms, perm=[1,0]))
-        return - tf.reduce_sum(II_sim_mask * cosine_sim) / n_cols**2 / 2 / f_sim
+    per_item_thresh = per_item_sim_scores[:, n_cols-item_n_sim-1:n_cols-item_n_sim]
+    II_sim_mask = tf.cast(tf.math.greater(II_sim, per_item_thresh), tf.float32)
+    II_sim_weights = tf.exp(II_sim) * II_sim_mask / (tf.reduce_sum(tf.exp(II_sim) * II_sim_mask, axis=1, keepdims=True) + 1e-5)
 
+    def loss_fn(Users, Items):
+        return tf.reduce_sum(Om * tf.square(A - Users @ tf.transpose(Items, perm=[1,0])))
+    
+    def regularization_fn(Matrix):
+        return tf.reduce_sum(Matrix**2)
+    
     opt = tf.keras.optimizers.Adam()
 
-    print(f"Starting loss: {loss_fn(U,V)}, UU-loss: {user_user_sim_loss(U)}, II-loss: {item_item_sim_loss(V)}")
+    print(f"Starting loss: {loss_fn(U,V)/tf.reduce_sum(Om)}")
 
     for i in range(iters):
         for j in range(steps):
             with tf.GradientTape() as tape:
-                matrix_loss = loss_fn(U,V)
-                sim_loss = user_user_sim_loss(U)
-                loss = matrix_loss + sim_loss
+                rec = loss_fn(U,V)
+                uu_sim = loss_fn(UU_sim_weights @ U, V)
+                reg = regularization_fn(U)
+                loss = rec + uu_sim + lamb/2 * reg
             grads = tape.gradient(loss, [U])
             opt.apply_gradients(zip(grads, [U]))
 
-        print(f"Loss after it. {i}, U step: {loss_fn(U,V)}, UU-loss: {user_user_sim_loss(U)}, II-loss: {item_item_sim_loss(V)}")
+        print(f"Loss after it. {i}, U step: {loss_fn(U,V)/tf.reduce_sum(Om)}")
 
         for j in range(steps):
             with tf.GradientTape() as tape:
-                matrix_loss = loss_fn(U,V)
-                sim_loss = item_item_sim_loss(V)
-                loss = matrix_loss + sim_loss
+                rec = loss_fn(U,V)
+                ii_sim = loss_fn(U, II_sim_weights @ V)
+                reg = regularization_fn(U)
+                loss = rec + ii_sim + lamb/2 * reg
             grads = tape.gradient(loss, [V])
             opt.apply_gradients(zip(grads, [V]))
 
-        print(f"Loss after it. {i}, V step: {loss_fn(U,V)}, UU-loss: {user_user_sim_loss(U)}, II-loss: {item_item_sim_loss(V)}")
+        print(f"Loss after it. {i}, V step: {loss_fn(U,V)/tf.reduce_sum(Om)}")
     
     return U @ tf.transpose(V, perm=[1,0])
 

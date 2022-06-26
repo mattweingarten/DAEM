@@ -30,7 +30,7 @@ def normalize(data, by_col=False):
     primary = "matrix_col" if by_col else "matrix_row"
     secondary  = "matrix_row" if by_col else "matrix_col"
     mean = data.groupby(primary).mean()['Prediction']
-    std = data.groupby(primary).std()['Prediction']
+    std = data.groupby(primary).std()['Prediction'].map(lambda x: max(1e-3, x))
     groups = data.groupby(primary).groups
     normalized = data['Prediction'].copy().rename("Normalized")
     for idx in groups.keys():
