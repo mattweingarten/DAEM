@@ -21,4 +21,4 @@ cil_dataset = CollaborativeFilteringDataset("~/datasets/cil-collaborative-filter
 #train_and_predict_modular_als(cil_dataset, lambda A, A_tilde: tf.square(A - A_tilde), user_weights=user_weights, item_weights=item_weights)
 
 # Current best approach
-train_and_predict_autoencoder(cil_dataset, axis=0, layer_sizes=[8, 8], epochs=1000, reduction_dims=[0, 1], dropout_rate=0.5, strategy="standard")
+train_and_predict_autoencoder(cil_dataset, layer_sizes=[32, 8, 32], n=8, epochs=1000, dropout_rate=0.5, strategy="standard")

@@ -39,34 +39,19 @@ def create_denoising_autoencoder(input_dim, layer_sizes, dropout_rate, strategy=
 
     return tf.keras.Model(inputs=inputs, outputs=outputs)
 
-def train_and_predict_autoencoder(dataset, axis, layer_sizes, epochs=200, dropout_rate=0.5, reduction_dims=[0,1], strategy="standard"):
+def predict_autoenc(x, input_dim, layer_sizes, epochs=200, dropout_rate=0.5, strategy="standard"):
     """
     axis==0: encode users rating vectors
     axis==1: encode items rating vectors
     """
-    n_rows, n_cols = dataset.get_matrix_dims()
-
-    assert(axis==0 or axis==1)
-    input_dim = n_rows if axis==1 else n_cols
-    n_samples = n_rows if axis==0 else n_cols
-    samples = dataset.get_dense_matrix()
-    mask_samples = dataset.get_dense_mask()
-    if axis==1:
-        samples = tf.transpose(samples, perm=[1,0])
-        mask_samples = tf.transpose(mask_samples, perm=[1,0])
     
-
-    x = tf.stack([samples, mask_samples], axis=-1)
-
     def loss_fn(target_mask, prediction_mask):
         target = target_mask[...,0]
         valid_mask = target_mask[...,1]
         prediction = prediction_mask[...,0]
         dropout_mask = prediction_mask[...,1]
         mask = valid_mask * (1. - dropout_mask)
-        return tf.reduce_mean(
-            tf.reduce_sum(mask * tf.square(target - prediction), axis=reduction_dims, keepdims=True) / (tf.reduce_sum(mask, axis=reduction_dims, keepdims=True) + 1e-5)
-        )
+        return tf.reduce_sum(mask * tf.square(target - prediction)) / tf.maximum(tf.reduce_sum(mask), 1e-5)
 
     autoenc = create_denoising_autoencoder(input_dim, layer_sizes, dropout_rate, strategy=strategy)
 
@@ -85,7 +70,16 @@ def train_and_predict_autoencoder(dataset, axis, layer_sizes, epochs=200, dropou
     )
 
     dense_predictions = autoenc.predict(x, batch_size=1<<10)[...,0]
-    if axis==1:
-        dense_predictions = tf.transpose(dense_predictions, perm=[1,0])
 
+    return dense_predictions
+
+def train_and_predict_autoencoder(dataset, layer_sizes, n=1, epochs=200, dropout_rate=0.5, strategy="standard"):
+    x = tf.stack([dataset.get_dense_matrix(), dataset.get_dense_mask()], axis=-1)
+    n_samples, input_dim = dataset.get_matrix_dims()
+    
+    dense_predictions = tf.zeros(dataset.get_matrix_dims(), dtype=tf.float32)
+
+    for i in range(n):
+        dense_predictions += (1. / n) * predict_autoenc(x, input_dim, layer_sizes, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy)
+    
     dataset.create_submission_from_dense(dense_predictions)
