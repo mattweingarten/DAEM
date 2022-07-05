@@ -160,4 +160,4 @@ def train_and_predict_ncf_model(
 
     locations = dataset.get_prediction_locations()
     values = model.predict(locations, batch_size=1024)
-    dataset.create_submission(locations, values)
+    return dataset.create_submission(locations, values)

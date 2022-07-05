@@ -13,4 +13,4 @@ def train_and_predict_low_rank_approx(dataset, rank, zeta=1.):
 
     dense_predictions = power_transform_inverse(low_rank_approx(power_transform(A, zeta), rank), zeta)
 
-    dataset.create_submission_from_dense(dense_predictions)
+    return dataset.create_submission_from_dense(dense_predictions)

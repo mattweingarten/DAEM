@@ -4,6 +4,9 @@ import numpy as np
 from model.data_transforms import power_transform_inverse,power_transform
 
 def init_latent_vectors(mat, k):
+    """
+    We employ SVD to find the optimal rank-k approximation of input matrix mat.
+    """
     sigma, Ufull, Vfull = tf.linalg.svd(mat)
 
     U = Ufull[:, :k] * tf.expand_dims(tf.math.sqrt(sigma[:k]), axis=0)
@@ -12,6 +15,9 @@ def init_latent_vectors(mat, k):
     return tf.Variable(U),tf.Variable(V)
 
 def alternating_least_squares(mat, Om, k, lamb, iters):
+    """
+    Classic implementation of ALS, using tensorflow for solving the linear systems that arise.
+    """
     n_rows, n_cols = mat.shape
     U, V = init_latent_vectors(mat, k)
 
@@ -48,7 +54,12 @@ def alternating_least_squares(mat, Om, k, lamb, iters):
     return U@tf.transpose(V, perm=[1,0])
 
 
-def sgd_matrix_factorization(A, mask, k, lamb, iters, steps=1000, use_bias=True):
+def gradient_descent_matrix_factorization(A, mask, k, lamb, iters, steps=1000, use_bias=True):
+    """
+    The two subproblems from ALS are convex for their share of the parameters. Therefore, using gradient descent
+    is a valid option, that is much simpler to implement thanks to tensorflow autodiff and also faster due to the
+    quality of modern optimizers and tensorflow gpu acceleration.
+    """
     n_rows, n_cols = A.shape
     U, V = init_latent_vectors(A, k)
     U_b = tf.Variable(tf.zeros((n_rows, 1)))
@@ -142,60 +153,6 @@ def modular_matrix_factorization(A, mask, k, per_item_loss_fn, iters=20, steps=1
     return U @ tf.transpose(V, perm=[1,0]) + U_b + V_b
 
 
-def sim_matrix_fatorization(A, Om, k, lamb, iters, f_sim=0.001, steps=1000):
-    n_rows, n_cols = A.shape
-    U, V = init_latent_vectors(A, k)
-    
-    UU_sim = (A @ tf.transpose(A, perm=[1,0])) / (Om @ tf.transpose(Om, perm=[1,0]) + 1e-5) * (1. - tf.eye(n_rows))
-    user_n_sim = int(f_sim * n_rows)
-    per_user_sim_scores = tf.sort(UU_sim, axis=1)
-    per_user_thresh = per_user_sim_scores[:, n_rows-user_n_sim-1:n_rows-user_n_sim]
-    UU_sim_mask = tf.cast(tf.math.greater(UU_sim, per_user_thresh), tf.float32)
-    UU_sim_weights = tf.exp(UU_sim) * UU_sim_mask / (tf.reduce_sum(tf.exp(UU_sim) * UU_sim_mask, axis=1, keepdims=True) + 1e-5)
-
-    
-    II_sim = (tf.transpose(A, perm=[1,0]) @ A) / (tf.transpose(Om, perm=[1,0]) @ Om + 1e-5) * (1. - tf.eye(n_cols))
-    item_n_sim = int(f_sim * n_cols)
-    per_item_sim_scores = tf.sort(II_sim, axis=1)
-    per_item_thresh = per_item_sim_scores[:, n_cols-item_n_sim-1:n_cols-item_n_sim]
-    II_sim_mask = tf.cast(tf.math.greater(II_sim, per_item_thresh), tf.float32)
-    II_sim_weights = tf.exp(II_sim) * II_sim_mask / (tf.reduce_sum(tf.exp(II_sim) * II_sim_mask, axis=1, keepdims=True) + 1e-5)
-
-    def loss_fn(Users, Items):
-        return tf.reduce_sum(Om * tf.square(A - Users @ tf.transpose(Items, perm=[1,0])))
-    
-    def regularization_fn(Matrix):
-        return tf.reduce_sum(Matrix**2)
-    
-    opt = tf.keras.optimizers.Adam()
-
-    print(f"Starting loss: {loss_fn(U,V)/tf.reduce_sum(Om)}")
-
-    for i in range(iters):
-        for j in range(steps):
-            with tf.GradientTape() as tape:
-                rec = loss_fn(U,V)
-                uu_sim = loss_fn(UU_sim_weights @ U, V)
-                reg = regularization_fn(U)
-                loss = rec + uu_sim + lamb/2 * reg
-            grads = tape.gradient(loss, [U])
-            opt.apply_gradients(zip(grads, [U]))
-
-        print(f"Loss after it. {i}, U step: {loss_fn(U,V)/tf.reduce_sum(Om)}")
-
-        for j in range(steps):
-            with tf.GradientTape() as tape:
-                rec = loss_fn(U,V)
-                ii_sim = loss_fn(U, II_sim_weights @ V)
-                reg = regularization_fn(U)
-                loss = rec + ii_sim + lamb/2 * reg
-            grads = tape.gradient(loss, [V])
-            opt.apply_gradients(zip(grads, [V]))
-
-        print(f"Loss after it. {i}, V step: {loss_fn(U,V)/tf.reduce_sum(Om)}")
-    
-    return U @ tf.transpose(V, perm=[1,0])
-
 def train_and_predict_mf_ensemble(dataset, n=32, k=8, lamb=0.1, iters=6):
     rows,cols = dataset.get_matrix_dims()
     matrix = dataset.get_dense_matrix()
@@ -204,27 +161,25 @@ def train_and_predict_mf_ensemble(dataset, n=32, k=8, lamb=0.1, iters=6):
     dense_predictions = tf.zeros((rows, cols))
     for i in range(n):
         sample = mask * tf.cast(tf.math.greater(tf.random.uniform((rows, cols)), 0.5), tf.float32)
-        dense_predictions += sgd_matrix_factorization(matrix, sample, k=k, lamb=lamb, iters=iters) / n
+        dense_predictions += gradient_descent_matrix_factorization(matrix, sample, k=k, lamb=lamb, iters=iters) / n
     
-    dataset.create_submission_from_dense(dense_predictions)
+    return dataset.create_submission_from_dense(dense_predictions)
 
 def train_and_predict_alternating_least_squares(
-    dataset, k=3, lamb=0.1, iters=20, use_sgd=False, use_similariy=False, zeta=1.0
+    dataset, k=3, lamb=0.1, iters=20, use_gradient_descent=False
 ):
-    matrix = power_transform(dataset.get_dense_matrix(), zeta)
+    matrix = dataset.get_dense_matrix()
     mask = dataset.get_dense_mask()
 
-    dense_predictions = sgd_matrix_factorization(matrix, mask, k=k, lamb=lamb, iters=iters) if use_sgd  else \
-                        sim_matrix_fatorization(matrix, mask, k=k, lamb=lamb, iters=iters) if use_similariy else \
+    dense_predictions = gradient_descent_matrix_factorization(matrix, mask, k=k, lamb=lamb, iters=iters) if use_gradient_descent  else \
                         alternating_least_squares(matrix, mask, k=k, lamb=lamb, iters=iters)
-    dense_predictions = power_transform_inverse(dense_predictions, zeta)
 
-    dataset.create_submission_from_dense(dense_predictions)
+    return dataset.create_submission_from_dense(dense_predictions)
 
 def train_and_predict_modular_als(dataset, per_item_loss_fn, k=3, iters=20, l1=0.0, l2=0.1, user_weights=None, item_weights=None):
-        matrix = dataset.get_dense_matrix()
-        mask = dataset.get_dense_mask()
+    matrix = dataset.get_dense_matrix()
+    mask = dataset.get_dense_mask()
 
-        dense_predictions = modular_matrix_factorization(matrix, mask, k, per_item_loss_fn, iters=iters, l1=l1, l2=l2, user_weights=user_weights, item_weights=item_weights)
+    dense_predictions = modular_matrix_factorization(matrix, mask, k, per_item_loss_fn, iters=iters, l1=l1, l2=l2, user_weights=user_weights, item_weights=item_weights)
 
-        dataset.create_submission_from_dense(dense_predictions)
+    return dataset.create_submission_from_dense(dense_predictions)

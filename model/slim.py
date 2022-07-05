@@ -43,5 +43,5 @@ def train_and_predict_SLIM(
     W = compute_slim_matrix(A, Omega, iters, l1, l2)
     A_tilde = A @ W
 
-    dataset.create_submission_from_dense(A_tilde)
+    return dataset.create_submission_from_dense(A_tilde)
 

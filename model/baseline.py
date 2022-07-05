@@ -40,5 +40,5 @@ def train_and_predict_baseline(dataset, k=3, lamb=0.1, iters=20):
 
     dense_predictions = Users @ Items
 
-    dataset.create_submission_from_dense(dense_predictions)
+    return dataset.create_submission_from_dense(dense_predictions)
 

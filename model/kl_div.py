@@ -68,7 +68,7 @@ def train_and_predict_kl_div(dataset, k=32, beta=0.05, epochs=10):
 
     dense_predictions = kl_div_matrix_factorization(dataset.get_dense_matrix(), dataset.get_dataset(), k, beta, epochs)
 
-    dataset.create_submission_from_dense(dense_predictions)
+    return dataset.create_submission_from_dense(dense_predictions)
 
 
     

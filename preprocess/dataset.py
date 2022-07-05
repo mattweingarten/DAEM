@@ -81,6 +81,7 @@ class CollaborativeFilteringDataset:
             vals = np.array(out_vals).reshape(-1, 1)
             rmse = math.sqrt(np.mean((vals - self.prep_predict["Prediction"].to_numpy().reshape(-1,1))**2))
             print(f"RMSE score: {rmse}")
+            return rmse
         else:
             ids = pd.Series(out_ids, name="Id")
             vals = pd.Series(out_vals, name="Prediction")
@@ -92,8 +93,21 @@ class CollaborativeFilteringDataset:
             )
             timestamp = time.ctime()
             df.to_csv(os.path.join("predictions", f"{timestamp}.csv"), float_format="%.8f", index=False)
+        return -1.0
             
     def create_submission_from_dense(self, dense_predictions):
         locations = self.get_prediction_locations()
         values = tf.gather_nd(dense_predictions, locations)
-        self.create_submission(locations, np.array(values))
+        retval = self.create_submission(locations, np.array(values))
+        if not self.test_mode:
+            timestamp = time.ctime()
+            predictions = dense_predictions.numpy()
+            if self.apply_z_trafo:
+                means = self.mean_train.to_numpy()
+                stds = self.std_train.to_numpy()
+                ax = 0 if self.normalize_by_col else 1
+                predictions *= np.expand_dims(stds, axis=ax)
+                predictions += np.expand_dims(means, axis=ax)
+
+            np.savez_compressed(os.path.join("predictions_dense", f"{timestamp}.npz"), predictions=predictions)
+        return retval
