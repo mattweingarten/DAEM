@@ -1,6 +1,8 @@
-from tkinter import Widget
 import tensorflow as tf
-from model.svd import low_rank_approx
+import matplotlib.pyplot as plt
+import time
+import os
+
 
 def create_denoising_autoencoder(input_dim, width, depth, dropout_rate, strategy="standard"):
     
@@ -45,7 +47,7 @@ def create_denoising_autoencoder(input_dim, width, depth, dropout_rate, strategy
 
     return tf.keras.Model(inputs=inputs, outputs=outputs)
 
-def predict_autoenc(x, input_dim, width, depth, epochs=200, dropout_rate=0.5, strategy="standard"):
+def predict_autoenc(x, input_dim, width, depth, epochs=200, dropout_rate=0.5, strategy="standard", callback=None, generate_plot=False):
     
     def loss_fn(target_mask, prediction_mask):
         target = target_mask[...,0]
@@ -62,26 +64,38 @@ def predict_autoenc(x, input_dim, width, depth, epochs=200, dropout_rate=0.5, st
         loss=loss_fn
     )
 
-    autoenc.fit(
+    history = autoenc.fit(
         x=x,
         y=x,
         epochs=epochs,
         batch_size=1<<10,
         shuffle=True,
+        callbacks=None if callback is None else [callback],
         verbose=0
     )
+
+    if callback is not None and generate_plot:
+        train_losses = history.history['loss']
+        val_losses = callback.get_val_rmse()
+        plt.plot(train_losses, label="train loss (MSE, norm. data)")
+        plt.plot(val_losses, label="val. score (RMSE, unnorm. data)")
+        plt.ylim(0.75, 1.15)
+        plt.legend()
+        plt.title("Model convergence")
+        plt.savefig(os.path.join("plots", f"{time.ctime()}.pdf"))
 
     dense_predictions = autoenc.predict(x, batch_size=1<<10)[...,0]
 
     return dense_predictions
 
-def train_and_predict_autoencoder(dataset, width, depth, n=1, epochs=200, dropout_rate=0.5, strategy="standard"):
+def train_and_predict_autoencoder(dataset, width, depth, n=1, epochs=200, dropout_rate=0.5, strategy="standard", restore_best_weights=False, generate_plot=False):
     x = tf.stack([dataset.get_dense_matrix(), dataset.get_dense_mask()], axis=-1)
     n_samples, input_dim = dataset.get_matrix_dims()
     
     dense_predictions = tf.zeros(dataset.get_matrix_dims(), dtype=tf.float32)
 
     for i in range(n):
-        dense_predictions += (1. / n) * predict_autoenc(x, input_dim, width, depth, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy)
+        callback = dataset.get_validation_callback(restore_best_weights=restore_best_weights) if generate_plot or restore_best_weights else None
+        dense_predictions += (1. / n) * predict_autoenc(x, input_dim, width, depth, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, callback=callback, generate_plot=generate_plot)
     
-    return dataset.create_submission_from_dense(dense_predictions) # return value only relevant if dataset uses hold out set and returns estimated score
+    return dataset.compute_val_score_from_dense(dense_predictions) # return value only relevant if dataset uses hold out set and returns estimated score

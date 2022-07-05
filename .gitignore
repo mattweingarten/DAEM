@@ -1,4 +1,6 @@
 __pycache__/
 /predictions/*.csv
 /predictions_dense/*.npz
+/parameters/*/
+/plots/*.pdf
 /test-script.py

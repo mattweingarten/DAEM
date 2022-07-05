@@ -12,7 +12,7 @@ from model.autoenc import train_and_predict_autoencoder
 
 from model.weighting_schemes import *
 
-cil_dataset = CollaborativeFilteringDataset("~/datasets/cil-collaborative-filtering-2022", apply_z_trafo=True, normalize_by_col=True, test_mode=True)
+cil_dataset = CollaborativeFilteringDataset("~/datasets/cil-collaborative-filtering-2022", apply_z_trafo=True, normalize_by_col=False)
 
 # Second best approach:
 #Omega = cil_dataset.get_dense_mask()
@@ -21,4 +21,4 @@ cil_dataset = CollaborativeFilteringDataset("~/datasets/cil-collaborative-filter
 #train_and_predict_modular_als(cil_dataset, lambda A, A_tilde: tf.square(A - A_tilde), user_weights=user_weights, item_weights=item_weights)
 
 # Current best approach
-train_and_predict_autoencoder(cil_dataset, width=8, depth=3, n=1, epochs=200, dropout_rate=0.5, strategy="standard")
+train_and_predict_autoencoder(cil_dataset, width=6, depth=1, n=1, epochs=100, dropout_rate=0.5, strategy="standard", generate_plot=True)
