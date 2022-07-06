@@ -23,11 +23,11 @@ def create_denoising_autoencoder(input_dim, width, depth, dropout_rate, strategy
     dropout = tf.keras.layers.Dropout(dropout_rate)(valid) # scaled by 1 / (1 - dropout_rate) during training
     dropout_mask = tf.cast(tf.math.greater(dropout, 0), tf.float32) # removed scaling, all values are 0, or 1
 
-    if strategy=="compute effective dropout":
+    if strategy=="effective":
         effective_dropout_rate = 1. - tf.reduce_sum(dropout_mask, axis=-1, keepdims=True) / input_dim
         mlp_inputs = ratings * dropout_mask / tf.maximum(1. - effective_dropout_rate, 1e-5)
         rec = mlp(mlp_inputs)
-    elif strategy=="normalize after dropout":
+    elif strategy=="renormalize":
         means = tf.reduce_sum(dropout_mask * ratings, axis=1, keepdims=True) / tf.maximum(tf.reduce_sum(dropout_mask, axis=1, keepdims=True), 0.1)
         stds = tf.maximum(
             tf.sqrt(tf.reduce_sum(dropout_mask * tf.square(ratings - means), axis=1, keepdims=True) / tf.maximum(tf.reduce_sum(dropout_mask, axis=1, keepdims=True), 0.1)),
@@ -78,13 +78,14 @@ def predict_autoenc(x, input_dim, width, depth, epochs=200, dropout_rate=0.5, st
         train_losses = history.history['loss']
         val_losses = callback.get_val_rmse()
         fig, ax = plt.subplots()
-        ax.plot(train_losses, label="train loss (MSE, norm. data)")
-        ax.plot(val_losses, label="val. score (RMSE, unnorm. data)")
+        ax.plot(train_losses, label="train loss (MSE, norm. ratings)")
+        ax.plot(val_losses, label="val. score (RMSE, unnorm. ratings)")
         ax.set_xlabel("Epochs")
-        ax.set_ylim(0.75, 1.15)
+        ax.set_ylim(0.7, 1.1)
         ax.legend()
         ax.set_title(f"Model convergence: w={width},d={depth},r={dropout_rate},strategy={strategy}")
         fig.savefig(os.path.join("plots", f"{time.ctime()}.pdf"))
+        plt.close(fig)
 
     dense_predictions = autoenc.predict(x, batch_size=1<<10)[...,0]
 

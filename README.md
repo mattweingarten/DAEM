@@ -1,8 +1,10 @@
-# cil-matrix-factorization
-Some basic matrix factorization techniques, including:
-- Standard matrix factorization using either *Alternating Least Squares* or *SGD*
-- [SLIM](http://glaros.dtc.umn.edu/gkhome/node/774)
-- [Neural Collaborative Filtering](https://arxiv.org/abs/1708.05031)
+# CIL Collaborative Filtering 2022
+
+## Instructions
+Run Grid Search for the autoencoder model:
+```shell
+python main.py --grid_search --convergence_plot --restore_best_weights --aenc_depth 0 1 2 --aenc_width 4 8 16
+```
 
 
 Loic's jupyter:

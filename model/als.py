@@ -163,7 +163,7 @@ def train_and_predict_mf_ensemble(dataset, n=32, k=8, lamb=0.1, iters=6):
         sample = mask * tf.cast(tf.math.greater(tf.random.uniform((rows, cols)), 0.5), tf.float32)
         dense_predictions += gradient_descent_matrix_factorization(matrix, sample, k=k, lamb=lamb, iters=iters) / n
     
-    return dataset.create_submission_from_dense(dense_predictions)
+    return dense_predictions
 
 def train_and_predict_alternating_least_squares(
     dataset, k=3, lamb=0.1, iters=20, use_gradient_descent=False
@@ -174,7 +174,7 @@ def train_and_predict_alternating_least_squares(
     dense_predictions = gradient_descent_matrix_factorization(matrix, mask, k=k, lamb=lamb, iters=iters) if use_gradient_descent  else \
                         alternating_least_squares(matrix, mask, k=k, lamb=lamb, iters=iters)
 
-    return dataset.create_submission_from_dense(dense_predictions)
+    return dense_predictions
 
 def train_and_predict_modular_als(dataset, per_item_loss_fn, k=3, iters=20, l1=0.0, l2=0.1, user_weights=None, item_weights=None):
     matrix = dataset.get_dense_matrix()
@@ -182,4 +182,4 @@ def train_and_predict_modular_als(dataset, per_item_loss_fn, k=3, iters=20, l1=0
 
     dense_predictions = modular_matrix_factorization(matrix, mask, k, per_item_loss_fn, iters=iters, l1=l1, l2=l2, user_weights=user_weights, item_weights=item_weights)
 
-    return dataset.create_submission_from_dense(dense_predictions)
+    return dense_predictions

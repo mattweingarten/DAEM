@@ -17,24 +17,22 @@ from model.autoenc import train_and_predict_autoencoder
 # Current best approach
 #train_and_predict_autoencoder(cil_dataset, width=6, depth=1, n=1, epochs=100, dropout_rate=0.5, strategy="standard", generate_plot=True)
 
-def autoencoder_grid_search(args, n_repeats=1):
-    cols = ["Depth", "Width", "Strategy", "Dropout_rate"] + [f"score_{i}" for i in range(n_repeats)]
+def autoencoder_grid_search(args):
+    cols = ["Depth", "Width", "Strategy", "Dropout_rate"] + [f"score_{i}" for i in range(args.n_repeats)]
     output_data = []
+    timestamp = time.ctime()
     for config in itertools.product(*[args.aenc_depth, args.aenc_width, args.aenc_strategy, args.aenc_dropout_rate]):
         depth, width, strategy, dropout_rate = config
-        timestamp = time.ctime()
         row = [depth, width, strategy, dropout_rate]
-        for i in range(n_repeats):
+        for i in range(args.n_repeats):
             dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split)
             dense_predictions = train_and_predict_autoencoder(dataset, width, depth, n=args.aenc_Nbag, epochs=args.aenc_epochs, dropout_rate=dropout_rate, strategy=strategy, generate_plot=args.convergence_plot, restore_best_weights=args.restore_best_weights)
             score = dataset.compute_val_score_from_dense(dense_predictions)
             row += [float(score)]
         output_data.append(row)
     df = pd.DataFrame(output_data, columns=cols)
-    df.to_csv(os.path.join("scores", f"{timestamp}.csv"), index=False)
+    df.to_csv(os.path.join("scores", f"AUTOENC-{timestamp}.csv"), index=False)
         
-
-
 def autoencoder_predict(args):
     dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split)
     for config in itertools.product(*[args.aenc_depth, args.aenc_width, args.aenc_strategy, args.aenc_dropout_rate]):
@@ -42,7 +40,39 @@ def autoencoder_predict(args):
         dense_predictions = train_and_predict_autoencoder(dataset, width, depth, n=args.aenc_Nbag, epochs=args.aenc_epochs, dropout_rate=dropout_rate, strategy=strategy, generate_plot=args.convergence_plot, restore_best_weights=args.restore_best_weights)
         # submit
         dataset.create_submission_from_dense(dense_predictions)
+
+def als_grid_search(args):
+    cols = ["rank", "l2"] + [f"score_{i}" for i in range(args.n_repeats)]
+    output_data = []
+    timestamp = time.ctime()
+    for (rank, l2) in itertools.product(*[args.baseline_als_rank, args.baseline_als_l2]):
+        row = [rank, l2]
+        for i in range(args.n_repeats):
+            dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split)
+            dense_predictions = train_and_predict_alternating_least_squares(dataset, k=rank, lamb=l2, iters=args.baseline_als_iters)
+            score = dataset.compute_val_score_from_dense(dense_predictions)
+            row += [float(score)]
+        output_data.append(row)
+    df = pd.DataFrame(output_data, columns=cols)
+    df.to_csv(os.path.join("scores", f"ALS-{timestamp}.csv"), index=False)
         
+def ncf_grid_search(args):
+    cols = ["model_type", "factors"] + [f"score_{i}" for i in range(args.n_repeats)]
+    output_data = []
+    timestamp = time.ctime()
+    for (model_type, factors) in itertools.product(*[args.baseline_ncf_model_type, args.baseline_ncf_factors]):
+        row = [model_type, factors]
+        for i in range(args.n_repeats):
+            dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split)
+            model = train_and_predict_ncf_model(dataset, n_latent=factors, model_type=model_type)
+            locations = dataset.get_val_locations()
+            predictions = model.predict(locations, batch_size=1<<10)
+            score = dataset.compute_val_score(locations, predictions)
+            row += [float(score)]
+        output_data.append(row)
+    df = pd.DataFrame(output_data, columns=cols)
+    df.to_csv(os.path.join("scores", f"NCF-{timestamp}.csv"), index=False)
+
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
@@ -55,7 +85,12 @@ if __name__=="__main__":
     parser.add_argument(
         "--val_split",
         type=float,
-        default=0.05
+        default=0.1
+    )
+    parser.add_argument(
+        "--n_repeats",
+        type=int,
+        default=3
     )
     # Args for the autoencoder model
     parser.add_argument(
@@ -64,7 +99,7 @@ if __name__=="__main__":
         action="store_true"
     )
     parser.add_argument(
-        "--predict_aenc",
+        "--aenc_predict",
         default=False,
         action="store_true"
     )
@@ -111,12 +146,55 @@ if __name__=="__main__":
     parser.add_argument(
         "--aenc_epochs",
         type=int,
-        default=1000
+        default=2000
+    )
+    # Args for the ALS baseline
+    parser.add_argument(
+        "--baseline_als_grid_search",
+        default=False,
+        action="store_true"
+    )
+    parser.add_argument(
+        "--baseline_als_rank",
+        type=int,
+        nargs="+",
+        default=[3]
+    )
+    parser.add_argument(
+        "--baseline_als_l2",
+        type=float,
+        nargs="+",
+        default=[0.1]
+    )
+    parser.add_argument(
+        "--baseline_als_iters",
+        type=int,
+        default=20
+    )
+    # Args for the NCF baseline
+    parser.add_argument(
+        "--baseline_ncf_grid_search",
+        default=False,
+        action="store_true"
+    )
+    parser.add_argument(
+        "--baseline_ncf_model_type",
+        nargs="+",
+        default="ncf",
+        choices=["gmf", "mlp", "ncf"]
+    )
+    parser.add_argument(
+        "--baseline_ncf_factors",
+        type=int,
+        nargs="+",
+        default=[16]
     )
 
     args = parser.parse_args()
-    print(args)
 
     if args.grid_search: autoencoder_grid_search(args)
+    if args.aenc_predict: autoencoder_predict(args)
+    if args.baseline_als_grid_search: als_grid_search(args)
+    if args.baseline_ncf_grid_search: ncf_grid_search(args)
 
 
