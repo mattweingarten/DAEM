@@ -77,12 +77,14 @@ def predict_autoenc(x, input_dim, width, depth, epochs=200, dropout_rate=0.5, st
     if callback is not None and generate_plot:
         train_losses = history.history['loss']
         val_losses = callback.get_val_rmse()
-        plt.plot(train_losses, label="train loss (MSE, norm. data)")
-        plt.plot(val_losses, label="val. score (RMSE, unnorm. data)")
-        plt.ylim(0.75, 1.15)
-        plt.legend()
-        plt.title("Model convergence")
-        plt.savefig(os.path.join("plots", f"{time.ctime()}.pdf"))
+        fig, ax = plt.subplots()
+        ax.plot(train_losses, label="train loss (MSE, norm. data)")
+        ax.plot(val_losses, label="val. score (RMSE, unnorm. data)")
+        ax.set_xlabel("Epochs")
+        ax.set_ylim(0.75, 1.15)
+        ax.legend()
+        ax.set_title(f"Model convergence: w={width},d={depth},r={dropout_rate},strategy={strategy}")
+        fig.savefig(os.path.join("plots", f"{time.ctime()}.pdf"))
 
     dense_predictions = autoenc.predict(x, batch_size=1<<10)[...,0]
 
@@ -98,4 +100,4 @@ def train_and_predict_autoencoder(dataset, width, depth, n=1, epochs=200, dropou
         callback = dataset.get_validation_callback(restore_best_weights=restore_best_weights) if generate_plot or restore_best_weights else None
         dense_predictions += (1. / n) * predict_autoenc(x, input_dim, width, depth, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, callback=callback, generate_plot=generate_plot)
     
-    return dataset.compute_val_score_from_dense(dense_predictions) # return value only relevant if dataset uses hold out set and returns estimated score
+    return dense_predictions

@@ -29,7 +29,7 @@ class CustomValidationCallback(tf.keras.callbacks.Callback):
         rmse = tf.sqrt(tf.reduce_sum(self.val_mask * tf.square(self.val_ratings - predictions)) / tf.maximum(tf.reduce_sum(self.val_mask), 1e-5))
         self.rmse_vals.append(rmse)
         if self.restore_best_weights:
-            if rmse < self.best_score:
+            if rmse <= self.best_score:
                 self.best_score = rmse
                 self.best_epoch = epoch
                 self.model.save_weights(self.parameter_file)
