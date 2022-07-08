@@ -18,15 +18,15 @@ from model.autoenc import train_and_predict_autoencoder
 #train_and_predict_autoencoder(cil_dataset, width=6, depth=1, n=1, epochs=100, dropout_rate=0.5, strategy="standard", generate_plot=True)
 
 def autoencoder_grid_search(args):
-    cols = ["Depth", "Width", "Strategy", "Dropout_rate"] + [f"score_{i}" for i in range(args.n_repeats)]
+    cols = ["Depth", "Width", "N_bag", "epochs", "Strategy", "Dropout_rate"] + [f"score_{i}" for i in range(args.n_repeats)]
     output_data = []
     timestamp = time.ctime()
-    for config in itertools.product(*[args.aenc_depth, args.aenc_width, args.aenc_strategy, args.aenc_dropout_rate]):
-        depth, width, strategy, dropout_rate = config
-        row = [depth, width, strategy, dropout_rate]
+    for config in itertools.product(*[args.aenc_depth, args.aenc_width, args.aenc_Nbag, args.aenc_epochs, args.aenc_strategy, args.aenc_dropout_rate]):
+        depth, width, Nbag, epochs, strategy, dropout_rate = config
+        row = [depth, width, Nbag, epochs, strategy, dropout_rate]
         for i in range(args.n_repeats):
             dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split)
-            dense_predictions = train_and_predict_autoencoder(dataset, width, depth, n=args.aenc_Nbag, epochs=args.aenc_epochs, dropout_rate=dropout_rate, strategy=strategy, generate_plot=args.convergence_plot, restore_best_weights=args.restore_best_weights)
+            dense_predictions = train_and_predict_autoencoder(dataset, width, depth, n=Nbag, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, generate_plot=args.convergence_plot, restore_best_weights=args.restore_best_weights)
             score = dataset.compute_val_score_from_dense(dense_predictions)
             row += [float(score)]
         output_data.append(row)
@@ -35,9 +35,9 @@ def autoencoder_grid_search(args):
         
 def autoencoder_predict(args):
     dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split)
-    for config in itertools.product(*[args.aenc_depth, args.aenc_width, args.aenc_strategy, args.aenc_dropout_rate]):
-        depth, width, strategy, dropout_rate = config
-        dense_predictions = train_and_predict_autoencoder(dataset, width, depth, n=args.aenc_Nbag, epochs=args.aenc_epochs, dropout_rate=dropout_rate, strategy=strategy, generate_plot=args.convergence_plot, restore_best_weights=args.restore_best_weights)
+    for config in itertools.product(*[args.aenc_depth, args.aenc_width, args.aenc_Nbag, args.aenc_epochs, args.aenc_strategy, args.aenc_dropout_rate]):
+        depth, width, Nbag, epochs, strategy, dropout_rate = config
+        dense_predictions = train_and_predict_autoencoder(dataset, width, depth, n=Nbag, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, generate_plot=args.convergence_plot, restore_best_weights=args.restore_best_weights)
         # submit
         dataset.create_submission_from_dense(dense_predictions)
 
@@ -117,7 +117,8 @@ if __name__=="__main__":
     parser.add_argument(
         "--aenc_Nbag",
         type=int,
-        default=1
+        nargs="+",
+        default=[1]
     )
     parser.add_argument(
         "--aenc_depth",
@@ -146,7 +147,8 @@ if __name__=="__main__":
     parser.add_argument(
         "--aenc_epochs",
         type=int,
-        default=2000
+        nargs="+",
+        default=[1000]
     )
     # Args for the ALS baseline
     parser.add_argument(

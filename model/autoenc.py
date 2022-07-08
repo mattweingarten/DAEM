@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 import matplotlib.pyplot as plt
 import time
 import os
@@ -11,7 +12,7 @@ def create_denoising_autoencoder(input_dim, width, depth, dropout_rate, strategy
     ratings = inputs[...,0]
     valid = inputs[...,1]
 
-    layer_sizes = [width * (1<<i) for i in range(depth, 0, -1)] + [width] + [width * (2<<i) for i in range(depth)]
+    layer_sizes = [width * (1<<i) for i in range(depth, 0, -1)] + [width] + [width * (1<<(i+1)) for i in range(depth)]
 
     print(f"Autoencoder shape: {layer_sizes}")
 
@@ -86,6 +87,7 @@ def predict_autoenc(x, input_dim, width, depth, epochs=200, dropout_rate=0.5, st
         ax.set_title(f"Model convergence: w={width},d={depth},r={dropout_rate},strategy={strategy}")
         fig.savefig(os.path.join("plots", f"{time.ctime()}.pdf"))
         plt.close(fig)
+        print(f"Best val. score: {np.min(val_losses)} at {np.argmin(val_losses)}; final val. score: {val_losses[-1]}")
 
     dense_predictions = autoenc.predict(x, batch_size=1<<10)[...,0]
 
