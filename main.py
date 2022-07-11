@@ -48,7 +48,7 @@ def als_grid_search(args):
     for (rank, l2) in itertools.product(*[args.baseline_als_rank, args.baseline_als_l2]):
         row = [rank, l2]
         for i in range(args.n_repeats):
-            dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split)
+            dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split, normalize_by_col=True)
             dense_predictions = train_and_predict_alternating_least_squares(dataset, k=rank, lamb=l2, iters=args.baseline_als_iters)
             score = dataset.compute_val_score_from_dense(dense_predictions)
             row += [float(score)]
@@ -57,14 +57,14 @@ def als_grid_search(args):
     df.to_csv(os.path.join("scores", f"ALS-{timestamp}.csv"), index=False)
         
 def ncf_grid_search(args):
-    cols = ["model_type", "factors"] + [f"score_{i}" for i in range(args.n_repeats)]
+    cols = ["model_type", "factors", "epochs"] + [f"score_{i}" for i in range(args.n_repeats)]
     output_data = []
     timestamp = time.ctime()
-    for (model_type, factors) in itertools.product(*[args.baseline_ncf_model_type, args.baseline_ncf_factors]):
-        row = [model_type, factors]
+    for (model_type, factors, epochs) in itertools.product(*[args.baseline_ncf_model_type, args.baseline_ncf_factors, args.baseline_ncf_epochs]):
+        row = [model_type, factors, epochs]
         for i in range(args.n_repeats):
             dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split)
-            model = train_and_predict_ncf_model(dataset, n_latent=factors, model_type=model_type)
+            model = train_and_predict_ncf_model(dataset, n_latent=factors, model_type=model_type, epochs=epochs)
             locations = dataset.get_val_locations()
             predictions = model.predict(locations, batch_size=1<<10)
             score = dataset.compute_val_score(locations, predictions)
@@ -90,7 +90,7 @@ if __name__=="__main__":
     parser.add_argument(
         "--n_repeats",
         type=int,
-        default=3
+        default=5
     )
     # Args for the autoencoder model
     parser.add_argument(
@@ -190,6 +190,12 @@ if __name__=="__main__":
         type=int,
         nargs="+",
         default=[16]
+    )
+    parser.add_argument(
+        "--baseline_ncf_epochs",
+        type=int,
+        nargs="+",
+        default=[20]
     )
 
     args = parser.parse_args()
