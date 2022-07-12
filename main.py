@@ -126,7 +126,7 @@ if __name__=="__main__":
     )
     # Args for the autoencoder model
     parser.add_argument(
-        "--grid_search",
+        "--aenc_grid_search",
         default=False,
         action="store_true"
     )
