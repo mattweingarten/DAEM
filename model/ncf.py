@@ -1,4 +1,3 @@
-from pickletools import optimize
 import tensorflow as tf
 
 def create_gmf_model(n_rows, n_cols, n_latent):

@@ -1,8 +1,6 @@
 import tensorflow as tf
 import numpy as np
 
-from model.data_transforms import power_transform_inverse,power_transform
-
 def init_latent_vectors(mat, k):
     """
     We employ SVD to find the optimal rank-k approximation of input matrix mat.
@@ -101,6 +99,9 @@ def gradient_descent_matrix_factorization(A, mask, k, lamb, iters, steps=1000, u
         print(f"Loss after it. {i}, V step: {metric_fn(U,V,U_b,V_b)}")
         
     return U @ tf.transpose(V, perm=[1,0]) + U_b + V_b
+
+def inverse_frequency_weights(mask, axis):
+    return mask / tf.reduce_sum(mask, axis=axis, keepdims=True)
 
 def modular_matrix_factorization(A, mask, k, per_item_loss_fn, iters=20, steps=1000, l1=0.0, l2=0.1, user_weights=None, item_weights=None):
     """
