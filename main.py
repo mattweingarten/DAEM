@@ -21,15 +21,15 @@ from model.slim import train_and_predict_SLIM
 #train_and_predict_autoencoder(cil_dataset, width=6, depth=1, n=1, epochs=100, dropout_rate=0.5, strategy="standard", generate_plot=True)
 
 def autoencoder_grid_search(args):
-    cols = ["Depth", "Width", "N_bag", "epochs", "Strategy", "Dropout_rate"] + [f"score_{i}" for i in range(args.n_repeats)]
+    cols = ["Depth", "Width", "N_bag", "epochs", "Strategy", "Loss_type", "Dropout_rate"] + [f"score_{i}" for i in range(args.n_repeats)]
     output_data = []
     timestamp = time.ctime()
-    for config in itertools.product(*[args.aenc_depth, args.aenc_width, args.aenc_Nbag, args.aenc_epochs, args.aenc_strategy, args.aenc_dropout_rate]):
-        depth, width, Nbag, epochs, strategy, dropout_rate = config
-        row = [depth, width, Nbag, epochs, strategy, dropout_rate]
+    for config in itertools.product(*[args.aenc_depth, args.aenc_width, args.aenc_Nbag, args.aenc_epochs, args.aenc_strategy, args.aenc_loss_type, args.aenc_dropout_rate]):
+        depth, width, Nbag, epochs, strategy, loss_type, dropout_rate = config
+        row = [depth, width, Nbag, epochs, strategy, loss_type, dropout_rate]
         for i in range(args.n_repeats):
             dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split)
-            dense_predictions = train_and_predict_autoencoder(dataset, width, depth, n=Nbag, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, generate_plot=args.convergence_plot, restore_best_weights=args.restore_best_weights)
+            dense_predictions = train_and_predict_autoencoder(dataset, width, depth, n=Nbag, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, loss_type=loss_type, generate_plot=args.convergence_plot, restore_best_weights=args.restore_best_weights)
             score = dataset.compute_val_score_from_dense(dense_predictions)
             row += [float(score)]
         output_data.append(row)
@@ -171,6 +171,12 @@ if __name__=="__main__":
         choices=["standard", "effective", "renormalize"]
     )
     parser.add_argument(
+        "--aenc_loss_type",
+        nargs="+",
+        default=["denoising"],
+        choices=["denoising", "standard"]
+    )
+    parser.add_argument(
         "--aenc_dropout_rate",
         type=float,
         nargs="+",
@@ -257,7 +263,7 @@ if __name__=="__main__":
 
     args = parser.parse_args()
 
-    if args.grid_search: autoencoder_grid_search(args)
+    if args.aenc_grid_search: autoencoder_grid_search(args)
     if args.aenc_predict: autoencoder_predict(args)
     if args.baseline_als_grid_search: als_grid_search(args)
     if args.baseline_ncf_grid_search: ncf_grid_search(args)

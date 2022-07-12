@@ -48,15 +48,25 @@ def create_denoising_autoencoder(input_dim, width, depth, dropout_rate, strategy
 
     return tf.keras.Model(inputs=inputs, outputs=outputs)
 
-def predict_autoenc(x, input_dim, width, depth, epochs=200, dropout_rate=0.5, strategy="standard", callback=None, generate_plot=False):
+def denoising_autoenc_loss_fn(target_mask, prediction_mask):
+    target = target_mask[...,0]
+    valid_mask = target_mask[...,1]
+    prediction = prediction_mask[...,0]
+    dropout_mask = prediction_mask[...,1]
+    mask = valid_mask * (1. - dropout_mask)
+    return tf.reduce_sum(mask * tf.square(target - prediction)) / tf.maximum(tf.reduce_sum(mask), 1e-5)
+
+def standard_autoenc_loss_fn(target_mask, prediction_mask):
+    target = target_mask[...,0]
+    valid_mask = target_mask[...,1]
+    prediction = prediction_mask[...,0]
+    dropout_mask = prediction_mask[...,1]
+    mask = valid_mask
+    return tf.reduce_sum(mask * tf.square(target - prediction)) / tf.maximum(tf.reduce_sum(mask), 1e-5)
+
+def predict_autoenc(x, input_dim, width, depth, epochs=200, dropout_rate=0.5, strategy="standard", loss_type="denoising", callback=None, generate_plot=False):
     
-    def loss_fn(target_mask, prediction_mask):
-        target = target_mask[...,0]
-        valid_mask = target_mask[...,1]
-        prediction = prediction_mask[...,0]
-        dropout_mask = prediction_mask[...,1]
-        mask = valid_mask * (1. - dropout_mask)
-        return tf.reduce_sum(mask * tf.square(target - prediction)) / tf.maximum(tf.reduce_sum(mask), 1e-5)
+    loss_fn = denoising_autoenc_loss_fn if loss_type=="denoising" else standard_autoenc_loss_fn
 
     autoenc = create_denoising_autoencoder(input_dim, width, depth, dropout_rate, strategy=strategy)
 
@@ -84,7 +94,7 @@ def predict_autoenc(x, input_dim, width, depth, epochs=200, dropout_rate=0.5, st
         ax.set_xlabel("Epochs")
         ax.set_ylim(0.7, 1.1)
         ax.legend()
-        ax.set_title(f"Model convergence: w={width},d={depth},r={dropout_rate},strategy={strategy}")
+        ax.set_title(f"Model convergence: w={width},d={depth},r={dropout_rate},strategy={strategy}" + ("" if loss_type=="denoising" else "loss=standard"))
         fig.savefig(os.path.join("plots", f"{time.ctime()}.pdf"))
         plt.close(fig)
         print(f"Best val. score: {np.min(val_losses)} at {np.argmin(val_losses)}; final val. score: {val_losses[-1]}")
@@ -93,7 +103,7 @@ def predict_autoenc(x, input_dim, width, depth, epochs=200, dropout_rate=0.5, st
 
     return dense_predictions
 
-def train_and_predict_autoencoder(dataset, width, depth, n=1, epochs=200, dropout_rate=0.5, strategy="standard", restore_best_weights=False, generate_plot=False):
+def train_and_predict_autoencoder(dataset, width, depth, n=1, epochs=200, dropout_rate=0.5, strategy="standard", loss_type="denoising", restore_best_weights=False, generate_plot=False):
     x = tf.stack([dataset.get_dense_matrix(), dataset.get_dense_mask()], axis=-1)
     n_samples, input_dim = dataset.get_matrix_dims()
     
@@ -101,6 +111,6 @@ def train_and_predict_autoencoder(dataset, width, depth, n=1, epochs=200, dropou
 
     for i in range(n):
         callback = dataset.get_validation_callback(restore_best_weights=restore_best_weights) if generate_plot or restore_best_weights else None
-        dense_predictions += (1. / n) * predict_autoenc(x, input_dim, width, depth, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, callback=callback, generate_plot=generate_plot)
+        dense_predictions += (1. / n) * predict_autoenc(x, input_dim, width, depth, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, loss_type=loss_type, callback=callback, generate_plot=generate_plot)
     
     return dense_predictions
