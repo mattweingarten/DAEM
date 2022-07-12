@@ -1,4 +1,5 @@
 import argparse
+from codecs import latin_1_decode
 import itertools
 import time
 import os
@@ -11,6 +12,8 @@ from preprocess.dataset import CollaborativeFilteringDataset
 from model.als import train_and_predict_alternating_least_squares
 from model.ncf import train_and_predict_ncf_model
 from model.autoenc import train_and_predict_autoencoder
+from model.svd import train_and_predict_low_rank_approx
+from model.slim import train_and_predict_SLIM
 
 #cil_dataset = CollaborativeFilteringDataset("~/datasets/cil-collaborative-filtering-2022", apply_z_trafo=True, normalize_by_col=False)
 
@@ -73,6 +76,35 @@ def ncf_grid_search(args):
     df = pd.DataFrame(output_data, columns=cols)
     df.to_csv(os.path.join("scores", f"NCF-{timestamp}.csv"), index=False)
 
+def slim_grid_search(args):
+    cols = ["l1"] + [f"score_{i}" for i in range(args.n_repeats)]
+    output_data = []
+    timestamp = time.ctime()
+    for l1 in args.baseline_SLIM_l1:
+        row = [l1]
+        for i in range(args.n_repeats):
+            dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split)
+            dense_predictions = train_and_predict_SLIM(dataset, l1=l1)
+            score = dataset.compute_val_score_from_dense(dense_predictions)
+            row += [float(score)]
+        output_data.append(row)
+    df = pd.DataFrame(output_data, columns=cols)
+    df.to_csv(os.path.join("scores", f"SLIM-{timestamp}.csv"), index=False)
+
+def svd_grid_search(args):
+    cols = ["rank"] + [f"score_{i}" for i in range(args.n_repeats)]
+    output_data = []
+    timestamp = time.ctime()
+    for rank in args.baseline_SVD_rank:
+        row = [rank]
+        for i in range(args.n_repeats):
+            dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split, normalize_by_col=True)
+            dense_predictions = train_and_predict_low_rank_approx(dataset, rank)
+            score = dataset.compute_val_score_from_dense(dense_predictions)
+            row += [float(score)]
+        output_data.append(row)
+    df = pd.DataFrame(output_data, columns=cols)
+    df.to_csv(os.path.join("scores", f"SVD-{timestamp}.csv"), index=False)
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
@@ -197,6 +229,31 @@ if __name__=="__main__":
         nargs="+",
         default=[20]
     )
+    # Args for SLIM baseline
+    parser.add_argument(
+        "--baseline_SLIM_grid_search",
+        default=False,
+        action="store_true"
+    )
+    parser.add_argument(
+        "--baseline_SLIM_l1",
+        type=float,
+        nargs="+",
+        default=[0.1],
+    )
+    # Args for SVD baseline
+    parser.add_argument(
+        "--baseline_SVD_grid_search",
+        default=False,
+        action="store_true"
+    )
+    parser.add_argument(
+        "--baseline_SVD_rank",
+        type=int,
+        nargs="+",
+        default=[3]
+    )
+
 
     args = parser.parse_args()
 
@@ -204,5 +261,7 @@ if __name__=="__main__":
     if args.aenc_predict: autoencoder_predict(args)
     if args.baseline_als_grid_search: als_grid_search(args)
     if args.baseline_ncf_grid_search: ncf_grid_search(args)
+    if args.baseline_SVD_grid_search: svd_grid_search(args)
+    if args.baseline_SLIM_grid_search: slim_grid_search(args)
 
 

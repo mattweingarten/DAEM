@@ -36,12 +36,11 @@ def compute_slim_matrix(
     return W
 
 def train_and_predict_SLIM(
-    dataset, iters=1000, l1=2., l2=0.5
+    dataset, iters=5000, l1=0.1, l2=0.0
 ):
     A = dataset.get_dense_matrix()
     Omega = dataset.get_dense_mask()
     W = compute_slim_matrix(A, Omega, iters, l1, l2)
     A_tilde = A @ W
 
-    return dataset.create_submission_from_dense(A_tilde)
-
+    return A_tilde
