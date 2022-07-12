@@ -8,7 +8,7 @@ python main.py --data_path <PATH> --val_split 0.0 --aenc_predict --aenc_Nbag <N>
 
 Run Grid Search for the autoencoder model:
 ```
-python main.py --data_path <PATH> --val_split 0.0 --aenc_grid_search --aenc_Nbag <N1,N2,...> --aenc_depth <D1,D2,...> --aenc_width <W1,W2,...> --aenc_dropout_rate <R1,R2,...> --aenc_epochs <E1,E2,...> --aenc_strategy standard effective renormalize
+python main.py --data_path <PATH> --aenc_grid_search --aenc_Nbag <N1,N2,...> --aenc_depth <D1,D2,...> --aenc_width <W1,W2,...> --aenc_dropout_rate <R1,R2,...> --aenc_epochs <E1,E2,...> --aenc_strategy standard effective renormalize
 ```
 
 Run Grid Search for baseline model SVD:
