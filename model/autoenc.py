@@ -64,7 +64,7 @@ def standard_autoenc_loss_fn(target_mask, prediction_mask):
     mask = valid_mask
     return tf.reduce_sum(mask * tf.square(target - prediction)) / tf.maximum(tf.reduce_sum(mask), 1e-5)
 
-def predict_autoenc(x, input_dim, width, depth, epochs=200, dropout_rate=0.5, strategy="standard", loss_type="denoising", callback=None, generate_plot=False):
+def predict_autoenc(matrix, input_dim, width, depth, epochs=200, dropout_rate=0.5, strategy="standard", loss_type="denoising", generate_bootstrap=True, callback=None, generate_plot=False):
     
     loss_fn = denoising_autoenc_loss_fn if loss_type=="denoising" else standard_autoenc_loss_fn
 
@@ -74,6 +74,14 @@ def predict_autoenc(x, input_dim, width, depth, epochs=200, dropout_rate=0.5, st
         optimizer="Adam",
         loss=loss_fn
     )
+
+    if generate_bootstrap:
+        print("generating bootstrap dataset.")
+        N = tf.shape(matrix)[0]
+        sample = tf.random.uniform((N,),minval=0, maxval=N, dtype=tf.int32)
+        x = tf.gather(matrix, sample)
+    else:
+        x = matrix
 
     history = autoenc.fit(
         x=x,
@@ -99,11 +107,11 @@ def predict_autoenc(x, input_dim, width, depth, epochs=200, dropout_rate=0.5, st
         plt.close(fig)
         print(f"Best val. score: {np.min(val_losses)} at {np.argmin(val_losses)}; final val. score: {val_losses[-1]}")
 
-    dense_predictions = autoenc.predict(x, batch_size=1<<10)[...,0]
+    dense_predictions = autoenc.predict(matrix, batch_size=1<<10)[...,0]
 
     return dense_predictions
 
-def train_and_predict_autoencoder(dataset, width, depth, n=1, epochs=200, dropout_rate=0.5, strategy="standard", loss_type="denoising", restore_best_weights=False, generate_plot=False):
+def train_and_predict_autoencoder(dataset, width, depth, n=1, epochs=200, dropout_rate=0.5, strategy="standard", loss_type="denoising", restore_best_weights=False, generate_plot=False, generate_bootstrap=False):
     x = tf.stack([dataset.get_dense_matrix(), dataset.get_dense_mask()], axis=-1)
     n_samples, input_dim = dataset.get_matrix_dims()
     
@@ -111,6 +119,6 @@ def train_and_predict_autoencoder(dataset, width, depth, n=1, epochs=200, dropou
 
     for i in range(n):
         callback = dataset.get_validation_callback(restore_best_weights=restore_best_weights) if generate_plot or restore_best_weights else None
-        dense_predictions += (1. / n) * predict_autoenc(x, input_dim, width, depth, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, loss_type=loss_type, callback=callback, generate_plot=generate_plot)
+        dense_predictions += (1. / n) * predict_autoenc(x, input_dim, width, depth, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, loss_type=loss_type, callback=callback, generate_plot=generate_plot, generate_bootstrap=generate_bootstrap)
     
     return dense_predictions

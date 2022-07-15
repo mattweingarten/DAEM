@@ -29,7 +29,7 @@ def autoencoder_grid_search(args):
         row = [depth, width, Nbag, epochs, strategy, loss_type, dropout_rate]
         for i in range(args.n_repeats):
             dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split)
-            dense_predictions = train_and_predict_autoencoder(dataset, width, depth, n=Nbag, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, loss_type=loss_type, generate_plot=args.convergence_plot, restore_best_weights=args.restore_best_weights)
+            dense_predictions = train_and_predict_autoencoder(dataset, width, depth, n=Nbag, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, loss_type=loss_type, generate_plot=args.convergence_plot, restore_best_weights=args.restore_best_weights, generate_bootstrap=args.aenc_generate_bootstrap)
             score = dataset.compute_val_score_from_dense(dense_predictions)
             row += [float(score)]
         output_data.append(row)
@@ -40,7 +40,7 @@ def autoencoder_predict(args):
     dataset = CollaborativeFilteringDataset(args.data_path, val_split=args.val_split)
     for config in itertools.product(*[args.aenc_depth, args.aenc_width, args.aenc_Nbag, args.aenc_epochs, args.aenc_strategy, args.aenc_dropout_rate]):
         depth, width, Nbag, epochs, strategy, dropout_rate = config
-        dense_predictions = train_and_predict_autoencoder(dataset, width, depth, n=Nbag, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, generate_plot=args.convergence_plot, restore_best_weights=args.restore_best_weights)
+        dense_predictions = train_and_predict_autoencoder(dataset, width, depth, n=Nbag, epochs=epochs, dropout_rate=dropout_rate, strategy=strategy, generate_plot=args.convergence_plot, restore_best_weights=args.restore_best_weights, generate_bootstrap=args.aenc_generate_bootstrap)
         # submit
         dataset.create_submission_from_dense(dense_predictions)
 
@@ -187,6 +187,11 @@ if __name__=="__main__":
         type=int,
         nargs="+",
         default=[1000]
+    )
+    parser.add_argument(
+        "--aenc_generate_bootstrap",
+        default=False,
+        action="store_true"
     )
     # Args for the ALS baseline
     parser.add_argument(
