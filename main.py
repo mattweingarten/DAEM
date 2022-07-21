@@ -112,69 +112,81 @@ if __name__=="__main__":
     parser.add_argument(
         "--data_path",
         type=str,
-        default="~/datasets/cil-collaborative-filtering-2022"
+        default="~/datasets/cil-collaborative-filtering-2022",
+        help="path to the CIL collaborative filtering dataset folder, containing both the train and predict data"
     )
     parser.add_argument(
         "--val_split",
         type=float,
-        default=0.1
+        default=0.1,
+        help="validation split fraction. Used during grid search, set to 0 for prediction"
     )
     parser.add_argument(
         "--n_repeats",
         type=int,
-        default=5
+        default=5,
+        help="number of repeats for each model configuration during grid search"
     )
     # Args for the autoencoder model
     parser.add_argument(
         "--aenc_grid_search",
         default=False,
-        action="store_true"
+        action="store_true",
+        help="flag to run grid search for the autoencoder model"
     )
     parser.add_argument(
         "--aenc_predict",
         default=False,
-        action="store_true"
+        action="store_true",
+        help="flag to train and predict using the autoencoder model"
     )
     parser.add_argument(
         "--convergence_plot",
         default=False,
-        action="store_true"
+        action="store_true",
+        help="flag to generate a convergence plot for the autoencoder model"
     )
     parser.add_argument(
         "--restore_best_weights",
         default=False,
-        action="store_true"
+        action="store_true",
+        help="flag to restore best weight after training of the autoencoder model"
     )
     # Hyperparameters for autoenc
     parser.add_argument(
         "--aenc_Nbag",
         type=int,
         nargs="+",
-        default=[1]
+        default=[1],
+        help="number of autoencoder models per ensemble"
     )
     parser.add_argument(
         "--aenc_depth",
         type=int,
         nargs="+",
-        default=[1]
+        default=[1],
+        help="autoencoder depth hyperparameter"
     )
     parser.add_argument(
         "--aenc_width",
         type=int,
         nargs="+",
-        default=[8]
+        default=[8],
+        help="autoencoder width hyperparameter"
     )
     parser.add_argument(
         "--aenc_strategy",
         nargs="+",
         default=["standard"],
-        choices=["standard", "effective", "renormalize"]
+        choices=["standard", "effective", "renormalize"],
+        help="autoencoder dropout strategy"
     )
     parser.add_argument(
         "--aenc_loss_type",
         nargs="+",
         default=["denoising"],
-        choices=["denoising", "standard"]
+        choices=["denoising", "standard"],
+        help="autoencoder loss type"
     )
     parser.add_argument(
         "--aenc_dropout_rate",
