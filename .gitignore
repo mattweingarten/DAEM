@@ -5,3 +5,4 @@ __pycache__/
 /scores/*.csv
 /plots/*.pdf
 /test-script.py
+/requirements-full.txt

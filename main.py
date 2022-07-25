@@ -1,5 +1,4 @@
 import argparse
-from codecs import latin_1_decode
 import itertools
 import time
 import os
