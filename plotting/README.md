@@ -1,4 +1,4 @@
-## Plotting & Data collect shown in report
+## Plotting
 
 - CIL_plotter draws the two plots of the report. They are already included in this directory (see pdfs). Needed python packages: numpy, pandas, matplotlib.
 - data_train.csv holds dataset, which the plotter uses for the data-distribution plot.
