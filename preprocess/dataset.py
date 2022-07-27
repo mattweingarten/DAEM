@@ -7,6 +7,10 @@ import time
 from preprocess.helpers import *
 
 class CustomValidationCallback(tf.keras.callbacks.Callback):
+    """
+    Custom callback for monitoring performance on a holdout set
+    Also implements restoration of best weights if chosen via command line argument
+    """
     def __init__(self, train_ratings, train_mask, val_ratings, val_mask, means, stds, restore_best_weights=True):
         super(CustomValidationCallback, self).__init__()
         self.train_ratings = train_ratings
@@ -43,6 +47,10 @@ class CustomValidationCallback(tf.keras.callbacks.Callback):
         return self.rmse_vals
 
 class CollaborativeFilteringDataset:
+    """
+    Dataset class takes care of loading the data, z-transforms, re-transforms and holdout sets
+    Also handles storing the predictions
+    """
     def __init__(self, dataset_folder, apply_z_trafo=True, normalize_by_col=False, val_split=0.1, store_dense_predictions=False):
         self.apply_z_trafo = apply_z_trafo
         self.normalize_by_col = normalize_by_col

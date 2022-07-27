@@ -1,6 +1,9 @@
 import tensorflow as tf
 
 def create_gmf_model(n_rows, n_cols, n_latent):
+    """
+    creates the GMF model from the NCF paper
+    """
     row_emb = tf.keras.layers.Embedding(
         n_rows, n_latent
     )
@@ -20,6 +23,9 @@ def create_gmf_model(n_rows, n_cols, n_latent):
     return tf.keras.Model(inputs, outputs)
 
 def create_mlp_model(n_rows, n_cols, predictive_factors, layers=4):
+    """
+    creates the MLP model from the NCF paper
+    """
     n_latent = predictive_factors<<(layers-1)
     row_emb = tf.keras.layers.Embedding(
         n_rows, n_latent
@@ -71,6 +77,7 @@ def train_and_predict_ncf_model(
             tf.keras.layers.Dense(1)
         ])
 
+        # pretraining is done as described in the NCF paper
         pretrain_mlp_model.compile(
             optimizer="Adam",
             loss=tf.keras.losses.MeanSquaredError()

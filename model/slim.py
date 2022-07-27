@@ -4,6 +4,9 @@ import tensorflow as tf
 def compute_slim_matrix(
     A, mask, iters, l1, l2
 ):
+    """
+    The original paper uses Coordinate descent. We employ more modern gradient descent optimization provided by tensorflow
+    """
     n_rows, n_cols = A.shape
     
     W = tf.Variable(
@@ -38,6 +41,9 @@ def compute_slim_matrix(
 def train_and_predict_SLIM(
     dataset, iters=5000, l1=0.1, l2=0.0
 ):
+    """
+    Computes the dense predictions of the SLIM model
+    """
     A = dataset.get_dense_matrix()
     Omega = dataset.get_dense_mask()
     W = compute_slim_matrix(A, Omega, iters, l1, l2)

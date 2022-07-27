@@ -14,11 +14,6 @@ from model.autoenc import train_and_predict_autoencoder
 from model.svd import train_and_predict_low_rank_approx
 from model.slim import train_and_predict_SLIM
 
-#cil_dataset = CollaborativeFilteringDataset("~/datasets/cil-collaborative-filtering-2022", apply_z_trafo=True, normalize_by_col=False)
-
-# Current best approach
-#train_and_predict_autoencoder(cil_dataset, width=6, depth=1, n=1, epochs=100, dropout_rate=0.5, strategy="standard", generate_plot=True)
-
 def autoencoder_grid_search(args):
     cols = ["Depth", "Width", "N_bag", "epochs", "Strategy", "Loss_type", "Dropout_rate"] + [f"score_{i}" for i in range(args.n_repeats)]
     output_data = []

@@ -105,6 +105,7 @@ def inverse_frequency_weights(mask, axis):
 
 def modular_matrix_factorization(A, mask, k, per_item_loss_fn, iters=20, steps=1000, l1=0.0, l2=0.1, user_weights=None, item_weights=None):
     """
+    ALS implementation that accomodates different loss functions and weighting strategies
     per_item_loss_fn should have signature:
     per_item_loss_fn(A, A_tilde) -> matrix of same shape
     user_weights and item_weights should be a matrix of same shape as A, they will be used during either of the als steps. 
@@ -155,6 +156,10 @@ def modular_matrix_factorization(A, mask, k, per_item_loss_fn, iters=20, steps=1
 
 
 def train_and_predict_mf_ensemble(dataset, n=32, k=8, lamb=0.1, iters=6):
+    """
+    computes dense predictions of a matrix factorization ensemble
+    each learner is trained using a subset of the samples
+    """
     rows,cols = dataset.get_matrix_dims()
     matrix = dataset.get_dense_matrix()
     mask = dataset.get_dense_mask()
@@ -169,6 +174,9 @@ def train_and_predict_mf_ensemble(dataset, n=32, k=8, lamb=0.1, iters=6):
 def train_and_predict_alternating_least_squares(
     dataset, k=3, lamb=0.1, iters=20, use_gradient_descent=False
 ):
+    """
+    computes dense predictions of ALS
+    """
     matrix = dataset.get_dense_matrix()
     mask = dataset.get_dense_mask()
 
@@ -178,6 +186,9 @@ def train_and_predict_alternating_least_squares(
     return dense_predictions
 
 def train_and_predict_modular_als(dataset, per_item_loss_fn, k=3, iters=20, l1=0.0, l2=0.1, user_weights=None, item_weights=None):
+    """
+    computes dense predictions of modular ALS (i.e. with different weights and loss functions)
+    """
     matrix = dataset.get_dense_matrix()
     mask = dataset.get_dense_mask()
 
