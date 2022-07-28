@@ -198,7 +198,7 @@ class CollaborativeFilteringDataset:
             }
         )
         timestamp = time.ctime()
-        df.to_csv(os.path.join("predictions", f"{timestamp}.csv"), float_format="%.8f", index=False)
+        df.to_csv(os.path.join("predictions", f"{timestamp}.csv"), index=False)
             
     def create_submission_from_dense(self, dense_predictions):
         locations = self.get_prediction_locations()
