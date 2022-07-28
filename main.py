@@ -144,7 +144,7 @@ if __name__=="__main__":
         "--restore_best_weights",
         default=False,
         action="store_true",
-        help="flag to restore best weight after training of the autoencoder model"
+        help="flag to restore best weight after training of the autoencoder model. Not used by default."
     )
     # Hyperparameters for autoenc
     parser.add_argument(
@@ -173,37 +173,41 @@ if __name__=="__main__":
         nargs="+",
         default=["standard"],
         choices=["standard", "effective", "renormalize"],
-        help="autoencoder dropout strategy"
+        help="autoencoder dropout strategy, as discussed in the report"
     )
     parser.add_argument(
         "--aenc_loss_type",
         nargs="+",
         default=["denoising"],
         choices=["denoising", "standard"],
-        help="autoencoder loss type"
+        help="autoencoder loss type, as discussed in the report"
     )
     parser.add_argument(
         "--aenc_dropout_rate",
         type=float,
         nargs="+",
-        default=[0.5]
+        default=[0.5],
+        help="dropout rate of the autoencoder"
     )
     parser.add_argument(
         "--aenc_epochs",
         type=int,
         nargs="+",
-        default=[1000]
+        default=[1000],
+        help="number of epochs to train the autoencoder"
     )
     parser.add_argument(
         "--aenc_generate_bootstrap",
         default=False,
-        action="store_true"
+        action="store_true",
+        help="generate a bootstrap dataset for each run of the autoencoder. Sampled at random with replacement. Not used by default."
     )
     # Args for the ALS baseline
     parser.add_argument(
         "--baseline_als_grid_search",
         default=False,
-        action="store_true"
+        action="store_true",
+        help="perform grid search for the ALS baseline with all combinations of the provided hyperparameters (named baseline_als_*)"
     )
     parser.add_argument(
         "--baseline_als_rank",
@@ -226,7 +230,8 @@ if __name__=="__main__":
     parser.add_argument(
         "--baseline_ncf_grid_search",
         default=False,
-        action="store_true"
+        action="store_true",
+        help="perform grid search for the NCF baseline with all combinations of the provided hyperparameters (named baseline_ncf_*)"
     )
     parser.add_argument(
         "--baseline_ncf_model_type",
@@ -250,7 +255,8 @@ if __name__=="__main__":
     parser.add_argument(
         "--baseline_SLIM_grid_search",
         default=False,
-        action="store_true"
+        action="store_true",
+        help="perform grid search for the SLIM baseline, with all the combinations of provided hyperparameters (named baseline_SLIM_*)"
     )
     parser.add_argument(
         "--baseline_SLIM_l1",
@@ -262,7 +268,8 @@ if __name__=="__main__":
     parser.add_argument(
         "--baseline_SVD_grid_search",
         default=False,
-        action="store_true"
+        action="store_true",
+        help="perform grid search for the SVD baseline, with the provided hyperparameters baseline_SVD_rank"
     )
     parser.add_argument(
         "--baseline_SVD_rank",
