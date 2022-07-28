@@ -174,7 +174,7 @@ for jdx in range(3):
   ax.set_axisbelow(True)
 
   #labels
-  ax.set_xlabel('Dropout propability')
+  ax.set_xlabel('Dropout probability')
   ax.set_ylabel('RMSE')
 
   #title
