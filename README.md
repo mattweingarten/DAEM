@@ -5,6 +5,11 @@
 This repository uses numpy and Tensorflow 2 along with other common data science libraries. Use `requirements.txt` to install the correct versions.
 
 ## Instructions
+To print the possible command line arguments use:
+```
+python main.py --help
+```
+
 Make a prediction using our denoising autoencoder model:
 ```
 python main.py --data_path <PATH> --val_split 0.0 --aenc_predict --aenc_Nbag <N> --aenc_depth <D> --aenc_width <W> --aenc_dropout_rate <R> --aenc_epochs <EPOCHS>
