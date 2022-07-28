@@ -1,5 +1,9 @@
 # CIL Collaborative Filtering 2022
 
+## Setup
+
+This repository uses numpy and Tensorflow 2 along with other common data science libraries. Use `requirements.txt` to install the correct versions.
+
 ## Instructions
 Make a prediction using our denoising autoencoder model:
 ```
@@ -30,4 +34,7 @@ Run Grid Search for baseline model [NCF](https://arxiv.org/abs/1708.05031?contex
 ```
 python main.py --data_path <PATH> --baseline_ncf_grid_search --baseline_ncf_model_type gmf mlp ncf --baseline_ncf_factors <F1,F2,...> --baseline_ncf_epochs <E1,E2,...>
 ```
+
+## Plotting
+The `plotting` directory contains the code used to generate the plots in the report along with grid search results used to generate them. These results should be reproducible using the above instructions.
 
