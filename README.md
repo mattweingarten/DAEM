@@ -2,7 +2,7 @@
 
 ## Setup
 
-This repository uses numpy and Tensorflow 2 along with other common data science libraries. Use `requirements.txt` to install the correct versions.
+This repository uses numpy and Tensorflow 2 along with other common data science libraries. Use `requirements.txt` to install the correct versions. Be sure to dowload the CIL Collaborative Filtering 2022 dataset and supply the directory as command line argument.
 
 ## Instructions
 To print the possible command line arguments use:
@@ -10,10 +10,17 @@ To print the possible command line arguments use:
 python main.py --help
 ```
 
-Make a prediction using our denoising autoencoder model:
+### Reproducing the kaggle results
+
+To make a prediction using our denoising autoencoder model, use the following command with selected hyperparameters:
 ```
 python main.py --data_path <PATH> --val_split 0.0 --aenc_predict --aenc_Nbag <N> --aenc_depth <D> --aenc_width <W> --aenc_dropout_rate <R> --aenc_epochs <EPOCHS>
 ```
+
+Our kaggle submissions are annotated with the command that was used to generate them. So they should have a comment that contains a command like the above. Predictions are stored in the appropriate submission format under the `predictions` directory.
+
+### Grid search and baseline results
+In the report, we employ basic grid search to find good hyperparameters for both our model and the baseline models we used for comparison. The following commands perform this grid search, compute the score on a holdout set, then save the results in the `scores` directory.
 
 Run Grid Search for the autoencoder model:
 ```
