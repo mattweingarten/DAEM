@@ -1,5 +1,20 @@
 # CIL Collaborative Filtering 2022
 
+
+## Abstract 
+
+Highly accurate Recommender Systems, including
+Collaborative Filtering, lie at the heart of a satisfactory
+customer experience and continuous user engagement for a
+plethora of large-scale online platforms. While Matrix Factorization is the most widely studied and 
+applied Collaborative Filtering approach, there is evidence to suggest that linear techniques lack the complexity to sufficiently capture
+the underlying relationship between users and items. The
+use of neural networks like Autoencoders offers a potential
+remedy and may more accurately represent this relationship.
+In this work, we propose our Denoising Autoencoder Model
+(DÆM) for highly accurate Collaborative Filtering and show
+improvement over four evaluated state-of-the-art models.
+
 ## Setup
 
 This repository uses numpy and Tensorflow 2 along with other common data science libraries. Use `requirements.txt` to install the correct versions. Be sure to dowload the CIL Collaborative Filtering 2022 dataset and supply the directory as command line argument.
